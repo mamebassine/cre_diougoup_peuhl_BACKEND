@@ -12,34 +12,40 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('diplome_attestations', function (Blueprint $table) {
-    $table->id();
+            $table->id();
 
-    $table->foreignId('apprenant_id')
-          ->constrained()
-          ->cascadeOnDelete();
+            $table->foreignId('apprenant_id')
+                  ->constrained()
+                  ->cascadeOnDelete();
 
-    $table->enum('type_document', [
-        'Diplome',
-        'Attestation'
-    ]);
+            $table->enum('type_document', [
+                'Diplome',
+                'Attestation'
+            ]);
 
-    $table->string('numero_document')->unique();
+            $table->string('numero_document')->unique();
 
-    $table->date('date_delivrance');
-    $table->string('annee_academique')->nullable();
+            // Informations sur la formation
+            $table->string('formation')->nullable();
+            $table->string('module_suivi')->nullable();
 
-    $table->string('fichier_pdf')->nullable();
+            $table->date('date_delivrance');
+            $table->string('annee_academique')->nullable();
 
+            // Fichier PDF du diplôme ou de l'attestation
+            $table->string('fichier_pdf')->nullable();
 
-    $table->enum('statut', [
-        'Disponible',
-        'Retire'
-    ])->default('Disponible');
+            // Gestion du retrait
+            $table->enum('statut', [
+                'Disponible',
+                'Demande',
+                'Retire'
+            ])->default('Disponible');
 
-    $table->date('date_retrait')->nullable();
+            $table->date('date_retrait')->nullable();
 
-    $table->timestamps();
-});
+            $table->timestamps();
+        });
     }
 
     /**

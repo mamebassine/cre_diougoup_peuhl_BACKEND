@@ -6,5 +6,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class BoiteIdee extends Model
 {
-    //
+    protected $table = 'boite_idees';
+
+    protected $fillable = [
+        'apprenant_id',
+        'type_message',
+        'objet',
+        'message',
+        'is_read',
+        'statut',
+        'reponse',
+        'date_reponse'
+    ];
+
+    public function apprenant()
+    {
+        return $this->belongsTo(Apprenant::class);
+    }
 }
