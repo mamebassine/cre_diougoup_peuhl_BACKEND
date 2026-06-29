@@ -21,12 +21,13 @@ class ApprenantController extends Controller
             'user_id' => 'required|exists:users,id|unique:apprenants,user_id',
             'matricule' => 'required|unique:apprenants,matricule',
             'date_naissance' => 'required|date',
-            'sexe' => 'required',
-            'situation_matrimoniale' => 'required',
+            'sexe' => 'required|in:Masculin,Feminin',
+           'situation_matrimoniale' => 'required|in:Celibataire,Marie,Divorce,Veuf',
+           'niveau_informatique' => 'required|in:Debutant,Intermediaire,Avance',
+           'statut' => 'nullable|in:En attente,Valide,Refuse',
             'adresse' => 'required',
             'telephone' => 'required',
             'niveau_etude' => 'required',
-            'niveau_informatique' => 'required',
             'module_choisi' => 'required',
             'horaire_choisi' => 'required'
         ]);
