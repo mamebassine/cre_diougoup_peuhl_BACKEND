@@ -26,6 +26,11 @@ class Apprenant extends Model
         'statut'
     ];
 
+    protected $casts = [
+    'date_naissance' => 'date',
+    'date_inscription' => 'date',
+];
+
     public function user()
     {
         return $this->belongsTo(User::class);

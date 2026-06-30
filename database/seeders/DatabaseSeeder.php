@@ -14,33 +14,27 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::create([
-            'nom' => 'Admin',
-            'prenom' => 'System',
-            'email' => 'admin@cre.com',
-            'telephone' => '771111111',
+            'nom' => 'Niang',
+            'prenom' => 'Bassine',
+            'email' => 'bassinen13@gmail.com',
+            'telephone' => '771065156',
             'password' => Hash::make('password123'),
             'role' => 'admin',
             'is_active' => true,
+             'created_at' => now(),
+             'updated_at' => now(),
         ]);
 
         User::create([
-            'nom' => 'Gestionnaire',
-            'prenom' => 'Centre',
-            'email' => 'gestionnaire@cre.com',
-            'telephone' => '772222222',
+            'nom' => 'FALL',
+            'prenom' => 'Omar',
+            'email' => 'mamebassine06@gmail.com',
+            'telephone' => '779785151',
             'password' => Hash::make('password123'),
             'role' => 'gestionnaire',
             'is_active' => true,
-        ]);
-
-        User::create([
-            'nom' => 'Apprenant',
-            'prenom' => 'Test',
-            'email' => 'apprenant@cre.com',
-            'telephone' => '773333333',
-            'password' => Hash::make('password123'),
-            'role' => 'apprenant',
-            'is_active' => true,
-        ]);
+             'created_at' => now(),
+             'updated_at' => now(),
+        ]);    
     }
 }

@@ -18,6 +18,10 @@ class BoiteIdee extends Model
         'reponse',
         'date_reponse'
     ];
+    protected $casts = [
+    'is_read' => 'boolean',
+    'date_reponse' => 'datetime',
+];
 
     public function apprenant()
     {

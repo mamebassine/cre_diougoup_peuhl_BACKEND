@@ -21,16 +21,17 @@ class User extends Authenticatable implements JWTSubject
         'is_active'
     ];
 
+    protected $casts = [
+    'password' => 'hashed',
+    'is_active' => 'boolean',
+];
+
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    protected $casts = [
-        'password' => 'hashed',
-    ];
-
-    public function getJWTIdentifier()
+       public function getJWTIdentifier()
     {
         return $this->getKey();
     }

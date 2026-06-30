@@ -19,6 +19,10 @@ class DiplomeAttestation extends Model
         'date_retrait'
     ];
 
+    protected $casts = [
+    'date_delivrance' => 'date',
+    'date_retrait' => 'date',
+];
     public function apprenant()
     {
         return $this->belongsTo(Apprenant::class);
