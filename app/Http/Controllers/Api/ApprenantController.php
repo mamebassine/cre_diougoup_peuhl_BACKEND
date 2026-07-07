@@ -172,20 +172,47 @@ public function store(Request $request)
         'message' => 'Accès refusé'
     ], 403);
 }
-public function monProfil()
-{
-    $user = Auth::guard('api')->user();
 
-    return Apprenant::with('user')
-        ->where('user_id', $user->id)
-        ->first();
-}
+// public function monProfil()
+// {
+//     $user = Auth::guard('api')->user();
+
+//     return Apprenant::with('user')
+//         ->where('user_id', $user->id)
+//         ->first();
+
+
+//             if (!$apprenant) {
+//         return response()->json([
+//             'message' => 'Aucun profil apprenant trouvé.'
+//         ], 404);
+//     }
+
+//     return response()->json([
+//         'message' => 'Profil récupéré avec succès.',
+//         'data' => $apprenant
+//     ]);
+// }
 
 
 
     /**
      * AFFICHER UN APPRENANT
      */
+    
+    public function monProfil()
+{
+    $user = Auth::guard('api')->user();
+
+    $apprenant = Apprenant::with('user')
+        ->where('user_id', $user->id)
+        ->first();
+
+    return response()->json([
+        'user' => $user,
+        'apprenant' => $apprenant
+    ]);
+}
     public function show(string $id)
     {
         $user = Auth::guard('api')->user();

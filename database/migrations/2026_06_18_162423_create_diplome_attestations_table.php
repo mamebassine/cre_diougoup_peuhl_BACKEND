@@ -18,30 +18,35 @@ return new class extends Migration
                   ->constrained()
                   ->cascadeOnDelete();
 
+            // Type de document demandé
             $table->enum('type_document', [
                 'Diplome',
                 'Attestation'
             ]);
 
-            $table->string('numero_document')->unique();
+            // Généré uniquement après validation par l'administration
+            $table->string('numero_document')->unique()->nullable();
 
             // Informations sur la formation
             $table->string('formation')->nullable();
             $table->string('module_suivi')->nullable();
-
-            $table->date('date_delivrance');
             $table->string('annee_academique')->nullable();
 
-            // Fichier PDF du diplôme ou de l'attestation
+            // Renseignée lors de la validation
+            $table->date('date_delivrance')->nullable();
+
+            // PDF généré ou téléversé par l'administration
             $table->string('fichier_pdf')->nullable();
 
-            // Gestion du retrait
+            // Suivi de la demande
             $table->enum('statut', [
-                'Disponible',
-                'Demande',
-                'Retire'
-            ])->default('Disponible');
+                'en_attente',
+                'valide',
+                'refuse',
+                'retire'
+            ])->default('en_attente');
 
+            // Date de retrait par l'apprenant
             $table->date('date_retrait')->nullable();
 
             $table->timestamps();

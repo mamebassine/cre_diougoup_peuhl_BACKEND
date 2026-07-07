@@ -11,7 +11,7 @@ class DiplomeAttestationController extends Controller
 {
     /**
      * LISTE
-     * Admin / gestionnaire voient tout
+     * Admin / Gestionnaire
      */
     public function index()
     {
@@ -20,109 +20,113 @@ class DiplomeAttestationController extends Controller
         );
     }
 
-
     /**
- * L'apprenant envoie une demande de diplôme
- */
-public function demande(Request $request)
-{
-    $request->validate([
-        'type_document' => 'required',
-        'numero_document' => 'required',
-        'date_delivrance' => 'required|date'
-    ]);
-
-    $user = auth()->guard('api')->user();
-
-    $apprenant = Apprenant::where('user_id', $user->id)->first();
-
-    if (!$apprenant) {
-        return response()->json([
-            'message' => 'Apprenant introuvable.'
-        ], 404);
-    }
-
-    $demande = DiplomeAttestation::create([
-        'apprenant_id' => $apprenant->id,
-        'type_document' => $request->type_document,
-        'numero_document' => $request->numero_document,
-        'date_delivrance' => $request->date_delivrance,
-        'statut' => 'en_attente'
-    ]);
-
-    return response()->json([
-        'message' => 'Demande envoyée avec succès.',
-        'data' => $demande
-    ], 201);
-}
-
-
-    /**
-     * DEMANDE DIPLOME (APPRENANT)
+     * L'apprenant envoie une demande de diplôme/attestation
      */
+    public function demande(Request $request)
+    {
+        $request->validate([
+            'type_document' => 'required|string'
+        ]);
 
+        $user = auth()->guard('api')->user();
 
-    public function mesDemandes()
-{
-    $user = auth()->guard('api')->user();
+        $apprenant = Apprenant::where('user_id', $user->id)->first();
 
-    $apprenant = Apprenant::where('user_id', $user->id)->first();
+        if (!$apprenant) {
+            return response()->json([
+                'message' => 'Apprenant introuvable.'
+            ], 404);
+        }
 
-    if (!$apprenant) {
+        $demande = DiplomeAttestation::create([
+            'apprenant_id' => $apprenant->id,
+            'type_document' => $request->type_document,
+            'statut' => 'en_attente'
+        ]);
+
         return response()->json([
-            'message' => 'Apprenant introuvable.'
-        ], 404);
+            'message' => 'Demande envoyée avec succès.',
+            'data' => $demande
+        ], 201);
     }
 
-    return response()->json(
-        DiplomeAttestation::where('apprenant_id', $apprenant->id)
-            ->latest()
-            ->get()
-    );
-}
-    public function store(Request $request)
-{
-    $request->validate([
-        'apprenant_id' => 'required|exists:apprenants,id',
-        'type_document' => 'required',
-        'numero_document' => 'required|unique:diplome_attestations,numero_document',
-        'date_delivrance' => 'required|date'
-    ]);
-
-    $document = DiplomeAttestation::create([
-        'apprenant_id' => $request->apprenant_id,
-        'type_document' => $request->type_document,
-        'numero_document' => $request->numero_document,
-        'date_delivrance' => $request->date_delivrance,
-        'statut' => 'valide'
-    ]);
-
-    return response()->json([
-        'message' => 'Document créé avec succès.',
-        'data' => $document
-    ], 201);
-}
     /**
-     * VALIDATION (ADMIN / GESTIONNAIRE)
+     * L'apprenant consulte ses demandes
+     */
+    public function mesDemandes()
+    {
+        $user = auth()->guard('api')->user();
+
+        $apprenant = Apprenant::where('user_id', $user->id)->first();
+
+        if (!$apprenant) {
+            return response()->json([
+                'message' => 'Apprenant introuvable.'
+            ], 404);
+        }
+
+        return response()->json(
+            DiplomeAttestation::where('apprenant_id', $apprenant->id)
+                ->latest()
+                ->get()
+        );
+    }
+
+    /**
+     * Création directe d'un document (Admin / Gestionnaire)
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'apprenant_id' => 'required|exists:apprenants,id',
+            'type_document' => 'required|string',
+            'numero_document' => 'required|unique:diplome_attestations,numero_document',
+            'date_delivrance' => 'required|date'
+        ]);
+
+        $document = DiplomeAttestation::create([
+            'apprenant_id' => $request->apprenant_id,
+            'type_document' => $request->type_document,
+            'numero_document' => $request->numero_document,
+            'date_delivrance' => $request->date_delivrance,
+            'statut' => 'valide'
+        ]);
+
+        return response()->json([
+            'message' => 'Document créé avec succès.',
+            'data' => $document
+        ], 201);
+    }
+
+    /**
+     * Validation d'une demande (Admin / Gestionnaire)
      */
     public function update(Request $request, string $id)
     {
         $document = DiplomeAttestation::findOrFail($id);
 
         $request->validate([
+            'numero_document' => 'required|unique:diplome_attestations,numero_document,' . $document->id,
+            'date_delivrance' => 'required|date',
             'statut' => 'required|in:valide,refuse,en_attente'
         ]);
 
         $document->update([
+            'numero_document' => $request->numero_document,
+            'date_delivrance' => $request->date_delivrance,
             'statut' => $request->statut
         ]);
 
         return response()->json([
-            'message' => 'Statut mis à jour',
+            'message' => 'Document mis à jour avec succès.',
             'data' => $document
         ]);
     }
 
+    /**
+     * Afficher un document
+     */
     public function show(string $id)
     {
         return response()->json(
@@ -130,12 +134,17 @@ public function demande(Request $request)
         );
     }
 
+    /**
+     * Supprimer un document
+     */
     public function destroy(string $id)
     {
-        DiplomeAttestation::destroy($id);
+        $document = DiplomeAttestation::findOrFail($id);
+
+        $document->delete();
 
         return response()->json([
-            'message' => 'Document supprimé'
+            'message' => 'Document supprimé avec succès.'
         ]);
     }
 }

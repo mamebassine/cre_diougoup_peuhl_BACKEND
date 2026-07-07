@@ -64,17 +64,37 @@ Route::prefix('auth')->group(function () {
         |---------------------------------------
         */
 
-        Route::middleware('role:apprenant')->group(function () {
-            Route::post('/boite-idees', [BoiteIdeeController::class, 'store']);
-        });
+       /*
+|---------------------------------------
+| BOÎTE À IDÉES
+|---------------------------------------
+*/
 
-        Route::middleware('role:admin,gestionnaire')->group(function () {
-            Route::get('/boite-idees', [BoiteIdeeController::class, 'index']);
-            Route::get('/boite-idees/{id}', [BoiteIdeeController::class, 'show']);
-            Route::put('/boite-idees/{id}', [BoiteIdeeController::class, 'update']);
-            Route::delete('/boite-idees/{id}', [BoiteIdeeController::class, 'destroy']);
-        });
+// Tout le monde autorisé selon rôle
+Route::middleware('role:apprenant,admin,gestionnaire')->group(function () {
 
-    });
+    Route::get('/boite-idees', [BoiteIdeeController::class, 'index']);
+    Route::get('/boite-idees/{id}', [BoiteIdeeController::class, 'show']);
+    Route::put('/boite-idees/{id}', [BoiteIdeeController::class, 'update']);
+
+});
+
+
+// Seulement apprenant
+Route::middleware('role:apprenant')->group(function () {
+
+    Route::post('/boite-idees', [BoiteIdeeController::class, 'store']);
+
+});
+
+
+// Admin + Gestionnaire seulement
+Route::middleware('role:admin,gestionnaire')->group(function () {
+
+    Route::delete('/boite-idees/{id}', [BoiteIdeeController::class, 'destroy']);
+
+});
+    
+});
 
 });
