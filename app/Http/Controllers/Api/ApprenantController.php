@@ -236,53 +236,7 @@ public function store(Request $request)
     /**
      * MODIFIER APPRENANT
      */
-    // public function update(Request $request, string $id)
-    // {
-    //     $user = Auth::guard('api')->user();
-
-    //     $apprenant = Apprenant::findOrFail($id);
-
-    //     il n'a plus de senns car separrer les routes 👤 apprenant modifie seulement son profil
-    //      if ($user->role === 'apprenant' && $apprenant->user_id != $user->id) {
-    //     //     return response()->json([
-    //     //         'message' => 'Accès refusé'
-    //     //     ], 403);
-    //      }
-
-    //     $request->validate([
-    //         'matricule' => 'sometimes|unique:apprenants,matricule,' . $apprenant->id,
-    //         'date_naissance' => 'sometimes|date',
-    //         'sexe' => 'sometimes|in:Masculin,Feminin',
-    //         'situation_matrimoniale' => 'sometimes|in:Celibataire,Marie,Divorce,Veuf',
-    //         'niveau_informatique' => 'sometimes|in:Debutant,Intermediaire,Avance',
-    //         'statut' => 'sometimes|in:En attente,Valide,Refuse',
-    //         'adresse' => 'sometimes',
-    //         'telephone' => 'sometimes',
-    //         'niveau_etude' => 'sometimes',
-    //         'module_choisi' => 'sometimes',
-    //         'horaire_choisi' => 'sometimes',
-    //     ]);
-
-    //     $apprenant->update($request->only([
-    //         'matricule',
-    //         'date_naissance',
-    //         'sexe',
-    //         'situation_matrimoniale',
-    //         'niveau_informatique',
-    //         'statut',
-    //         'adresse',
-    //         'telephone',
-    //         'niveau_etude',
-    //         'module_choisi',
-    //         'horaire_choisi',
-    //     ]));
-
-    //     return response()->json([
-    //         'message' => 'Apprenant modifié avec succès',
-    //         'data' => $apprenant
-    //     ]);
-    // }
-
+    
     public function update(Request $request, string $id)
 {
     $apprenant = Apprenant::findOrFail($id);
