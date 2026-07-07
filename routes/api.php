@@ -63,13 +63,6 @@ Route::prefix('auth')->group(function () {
         | BOÎTE À IDÉES
         |---------------------------------------
         */
-
-       /*
-|---------------------------------------
-| BOÎTE À IDÉES
-|---------------------------------------
-*/
-
 // Tout le monde autorisé selon rôle
 Route::middleware('role:apprenant,admin,gestionnaire')->group(function () {
 
