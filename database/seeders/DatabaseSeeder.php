@@ -13,28 +13,70 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'nom' => 'Niang',
-            'prenom' => 'Bassine',
-            'email' => 'bassinen13@gmail.com',
-            'telephone' => '771065156',
-            'password' => Hash::make('password123'),
-            'role' => 'admin',
-            'is_active' => true,
-             'created_at' => now(),
-             'updated_at' => now(),
-        ]);
 
-        User::create([
-            'nom' => 'FALL',
-            'prenom' => 'Omar',
-            'email' => 'mamebassine06@gmail.com',
-            'telephone' => '779785151',
-            'password' => Hash::make('password123'),
-            'role' => 'gestionnaire',
-            'is_active' => true,
-             'created_at' => now(),
-             'updated_at' => now(),
-        ]);    
+// ==========================
+// ADMIN
+// ==========================
+
+User::create([
+
+    'nom' => 'Niang',
+
+    'prenom' => 'Bassine',
+
+    'email' => 'bassinen13@gmail.com',
+
+    'telephone' => '771065156',
+
+    'password' => Hash::make('password123'),
+
+    'role' => 'admin',
+
+    'photo' => 'users/bassine.png',
+
+    'is_active' => true,
+
+    'email_verified_at' => now(),
+
+    'created_at' => now(),
+
+    'updated_at' => now(),
+
+]);
+
+
+
+
+
+// ==========================
+// GESTIONNAIRE
+// ==========================
+
+User::create([
+
+    'nom' => 'FALL',
+
+    'prenom' => 'Omar',
+
+    'email' => 'mamebassine06@gmail.com',
+
+    'telephone' => '779785151',
+
+    'password' => Hash::make('password123'),
+
+    'role' => 'gestionnaire',
+
+    'photo' => 'users/omar.jpeg',
+
+    'is_active' => true,
+
+    'email_verified_at' => now(),
+
+    'created_at' => now(),
+
+    'updated_at' => now(),
+
+]);
+
     }
 }

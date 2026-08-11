@@ -19,6 +19,11 @@ return new class extends Migration
           ->constrained()
           ->cascadeOnDelete();
 
+    $table->foreignId('created_by')
+      ->nullable()
+      ->constrained('users')
+      ->nullOnDelete();
+
     $table->string('matricule')->unique();
 
     $table->date('date_naissance');
@@ -50,21 +55,9 @@ return new class extends Migration
         'Avance'
     ]);
 
-    $table->string('module_choisi');
-
-    $table->string('horaire_choisi');
-
     $table->string('photo')->nullable();
 
     $table->longText('signature')->nullable();
-
-    $table->date('date_inscription')->nullable();
-    
-    $table->enum('statut', [
-        'En attente',
-        'Valide',
-        'Refuse'
-    ])->default('En attente');
 
     $table->timestamps();
 });
