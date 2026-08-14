@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
+use Illuminate\Validation\Rule;
+
 class ApprenantController extends Controller
 {
     /**
@@ -60,11 +62,9 @@ class ApprenantController extends Controller
 
             'sexe' => 'required|in:Masculin,Feminin',
 
-            'situation_matrimoniale' =>
-                'required|in:Celibataire,Marie,Divorce,Veuf',
+            'situation_matrimoniale' => 'required|in:Celibataire,Marie,Divorce,Veuf',
 
-            'niveau_informatique' =>
-                'required|in:Debutant,Intermediaire,Avance',
+            'niveau_informatique' => 'required|in:Debutant,Intermediaire,Avance',
 
             'adresse' => 'required|string',
 
@@ -74,8 +74,9 @@ class ApprenantController extends Controller
 
             'fonction' => 'nullable|string',
 
-            'photo' =>
-                'nullable|image|mimes:jpg,jpeg,png|max:2048'
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+
+           
         ]);
 
 
