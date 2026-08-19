@@ -117,110 +117,253 @@ class FormationController extends Controller
     /**
      * MODIFIER UNE FORMATION
      */
-    public function update(Request $request, string $id)
-    {
-        $user = Auth::guard('api')->user();
+  /**
+ * MODIFIER UNE FORMATION
+ */
+public function update(Request $request, string $id)
+{
+    // =====================================================
+    // UTILISATEUR CONNECTÉ
+    // =====================================================
 
-        if (
-            !$user ||
-            !in_array($user->role, ['admin', 'gestionnaire'])
-        ) {
-            return response()->json([
-                'message' => 'Accès refusé'
-            ], 403);
-        }
+    $user = Auth::guard('api')->user();
 
-        $formation = Formation::findOrFail($id);
-
-        $request->validate([
-            'nom' =>
-                'sometimes|string|unique:formations,nom,' .
-                $formation->id,
-
-            'resume' => 'sometimes|string',
-            'description' => 'sometimes|string',
-            'duree' => 'sometimes|string',
-            'diplome' => 'sometimes|string',
-            'lieu' => 'sometimes|string',
-
-            'objectifs' => 'sometimes|array',
-            'objectifs.*' => 'string',
-
-            // Image locale
-            'icone' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-
-            // Image en ligne
-            'icone_url' => 'nullable|url|max:500',
-
-            'capacite' => 'nullable|integer|min:1',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | DONNEES A MODIFIER
-        |--------------------------------------------------------------------------
-        */
-
-        $data = $request->only([
-            'nom',
-            'resume',
-            'description',
-            'duree',
-            'diplome',
-            'lieu',
-            'objectifs',
-            'capacite',
-            'is_active',
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | GESTION DE L'IMAGE
-        |--------------------------------------------------------------------------
-        */
-
-        if ($request->hasFile('icone')) {
-
-            // Supprimer l'ancienne image locale
-            if (
-                $formation->icone &&
-                !filter_var($formation->icone, FILTER_VALIDATE_URL)
-            ) {
-                Storage::disk('public')->delete($formation->icone);
-            }
-
-            // Enregistrer la nouvelle image
-            $data['icone'] = $request->file('icone')
-                ->store('formations', 'public');
-
-        } elseif ($request->filled('icone_url')) {
-
-            // Si une URL est fournie
-            // On supprime l'ancienne image locale si nécessaire
-            if (
-                $formation->icone &&
-                !filter_var($formation->icone, FILTER_VALIDATE_URL)
-            ) {
-                Storage::disk('public')->delete($formation->icone);
-            }
-
-            $data['icone'] = $request->icone_url;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | MODIFICATION
-        |--------------------------------------------------------------------------
-        */
-
-        $formation->update($data);
+    if (
+        !$user ||
+        !in_array(
+            $user->role,
+            ['admin', 'gestionnaire']
+        )
+    ) {
 
         return response()->json([
-            'message' => 'Formation modifiée avec succès.',
-            'data' => $formation
-        ]);
+            'message' => 'Accès refusé'
+        ], 403);
+
     }
+
+
+    // =====================================================
+    // FORMATION
+    // =====================================================
+
+    $formation =
+        Formation::findOrFail($id);
+
+
+    // =====================================================
+    // VALIDATION
+    // =====================================================
+
+    $request->validate([
+
+        'nom' =>
+            'sometimes|string|unique:formations,nom,' .
+            $formation->id,
+
+        'resume' =>
+            'sometimes|string',
+
+        'description' =>
+            'sometimes|string',
+
+        'duree' =>
+            'sometimes|string',
+
+        'diplome' =>
+            'sometimes|string',
+
+        'lieu' =>
+            'sometimes|string',
+
+        'objectifs' =>
+            'sometimes|array',
+
+        'objectifs.*' =>
+            'string',
+
+        'icone' =>
+            'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+
+        'icone_url' =>
+            'nullable|url|max:500',
+
+        'capacite' =>
+            'nullable|integer|min:1',
+
+        'is_active' =>
+            'sometimes|boolean',
+
+        'supprimer_icone' =>
+            'sometimes|boolean',
+
+    ]);
+
+
+    // =====================================================
+    // DONNÉES À MODIFIER
+    // =====================================================
+
+    $data = $request->only([
+
+        'nom',
+
+        'resume',
+
+        'description',
+
+        'duree',
+
+        'diplome',
+
+        'lieu',
+
+        'objectifs',
+
+        'capacite',
+
+        'is_active',
+
+    ]);
+
+
+    // =====================================================
+    // SUPPRESSION DE L'IMAGE
+    // =====================================================
+
+    if (
+        $request->boolean(
+            'supprimer_icone'
+        )
+    ) {
+
+        // Si ancienne image locale
+        if (
+            $formation->icone &&
+            !filter_var(
+                $formation->icone,
+                FILTER_VALIDATE_URL
+            )
+        ) {
+
+            Storage::disk('public')
+                ->delete(
+                    $formation->icone
+                );
+
+        }
+
+
+        // Supprimer de la BDD
+        $data['icone'] = null;
+
+    }
+
+
+    // =====================================================
+    // NOUVELLE IMAGE LOCALE
+    // =====================================================
+
+    if (
+        $request->hasFile('icone')
+    ) {
+
+        // Supprimer ancienne image locale
+
+        if (
+            $formation->icone &&
+            !filter_var(
+                $formation->icone,
+                FILTER_VALIDATE_URL
+            )
+        ) {
+
+            Storage::disk('public')
+                ->delete(
+                    $formation->icone
+                );
+
+        }
+
+
+        // Enregistrer nouvelle image
+
+        $data['icone'] =
+            $request
+                ->file('icone')
+                ->store(
+                    'formations',
+                    'public'
+                );
+
+    }
+
+
+    // =====================================================
+    // IMAGE EN LIGNE
+    // =====================================================
+
+    elseif (
+        $request->filled('icone_url')
+    ) {
+
+        // Supprimer ancienne image locale
+
+        if (
+            $formation->icone &&
+            !filter_var(
+                $formation->icone,
+                FILTER_VALIDATE_URL
+            )
+        ) {
+
+            Storage::disk('public')
+                ->delete(
+                    $formation->icone
+                );
+
+        }
+
+
+        // Enregistrer URL
+
+        $data['icone'] =
+            $request->icone_url;
+
+    }
+
+
+    // =====================================================
+    // MODIFICATION
+    // =====================================================
+
+    $formation->update(
+        $data
+    );
+
+
+    // =====================================================
+    // RECHARGER
+    // =====================================================
+
+    $formation->refresh();
+
+
+    // =====================================================
+    // RÉPONSE
+    // =====================================================
+
+    return response()->json([
+
+        'message' =>
+            'Formation modifiée avec succès.',
+
+        'data' =>
+            $formation
+
+    ]);
+
+}
 
     /**
      * SUPPRIMER UNE FORMATION

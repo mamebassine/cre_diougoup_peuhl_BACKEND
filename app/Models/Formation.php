@@ -19,9 +19,14 @@ class Formation extends Model
         'is_active',
     ];
 
-    protected $casts = [
+  protected $casts = [
+
         'objectifs' => 'array',
+
         'is_active' => 'boolean',
+
+        'capacite' => 'integer',
+
     ];
 
     /**

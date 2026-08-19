@@ -61,10 +61,7 @@ class InscriptionController extends Controller
 
         return response()->json(
             Inscription::with('formation')
-                ->where(
-                    'apprenant_id',
-                    $apprenant->id
-                )
+                ->where('apprenant_id', $apprenant->id)
                 ->latest()
                 ->get()
         );
@@ -73,23 +70,35 @@ class InscriptionController extends Controller
 
     /**
      * =========================================================
-     * INSCRIPTION PUBLIQUE À UNE FORMATION
+     * INSCRIPTION PUBLIQUE
      * =========================================================
-     *
-     * Cette méthode permet à une personne qui vient du site
-     * public de :
-     *
-     * 1. remplir ses informations personnelles
-     * 2. créer automatiquement son compte
-     * 3. créer son dossier apprenant
-     * 4. s'inscrire à la formation choisie
-     *
-     * Elle ne nécessite PAS d'être connecté.
      */
     public function inscriptionPublique(Request $request)
     {
         /*
-         * VALIDATION DES DONNÉES
+         * =====================================================
+         * DATE LIMITE POUR AVOIR AU MOINS 11 ANS
+         * =====================================================
+         *
+         * Exemple :
+         * Aujourd'hui = 18/08/2026
+         *
+         * Date minimale acceptée :
+         * 18/08/2015
+         *
+         * Une personne née le 18/08/2015 = 11 ans
+         * Une personne née le 19/08/2015 = 10 ans
+         */
+
+        $dateLimite = now()
+            ->subYears(11)
+            ->toDateString();
+
+
+        /*
+         * =====================================================
+         * VALIDATION
+         * =====================================================
          */
         $request->validate([
 
@@ -100,13 +109,22 @@ class InscriptionController extends Controller
                 'required|string|max:255',
 
             'email' =>
-                'required|email|max:255',
+                'required|email|max:255|unique:users,email',
+
+            /*
+             * Le mot de passe choisi par l'utilisateur
+             */
+            'password' =>
+                'required|string|min:8|confirmed',
 
             'telephone' =>
                 'required|string|max:30',
 
+            /*
+             * AU MOINS 11 ANS
+             */
             'date_naissance' =>
-                'required|date',
+                'required|date|before_or_equal:' . $dateLimite,
 
             'sexe' =>
                 'required|in:Masculin,Feminin',
@@ -132,7 +150,9 @@ class InscriptionController extends Controller
 
 
         /*
-         * VÉRIFIER LA FORMATION
+         * =====================================================
+         * FORMATION
+         * =====================================================
          */
         $formation = Formation::findOrFail(
             $request->formation_id
@@ -140,213 +160,13 @@ class InscriptionController extends Controller
 
 
         /*
-         * VÉRIFIER SI LA FORMATION EST ACTIVE
+         * Vérifier si la formation est active
          */
         if (!$formation->is_active) {
 
             return response()->json([
                 'message' =>
                     'Cette formation n’est plus disponible.'
-            ], 409);
-        }
-
-
-        /*
-         * VÉRIFIER SI L'EMAIL EXISTE DÉJÀ
-         */
-        $userExistant = User::where(
-            'email',
-            $request->email
-        )->first();
-
-
-        /*
-         * SI LE COMPTE EXISTE DÉJÀ
-         */
-        if ($userExistant) {
-
-            /*
-             * On cherche son dossier apprenant
-             */
-            $apprenantExistant = Apprenant::where(
-                'user_id',
-                $userExistant->id
-            )->first();
-
-
-            /*
-             * Si le compte existe mais pas le dossier
-             * on peut créer le dossier.
-             */
-            if (!$apprenantExistant) {
-
-                $apprenantExistant = Apprenant::create([
-
-                    'created_by' =>
-                        $userExistant->id,
-
-                    'user_id' =>
-                        $userExistant->id,
-
-                    'matricule' =>
-                        $this->genererMatricule(),
-
-                    'date_naissance' =>
-                        $request->date_naissance,
-
-                    'sexe' =>
-                        $request->sexe,
-
-                    'situation_matrimoniale' =>
-                        $request->situation_matrimoniale,
-
-                    'niveau_informatique' =>
-                        $request->niveau_informatique,
-
-                    'adresse' =>
-                        $request->adresse,
-
-                    'telephone' =>
-                        $request->telephone,
-
-                    'email' =>
-                        $request->email,
-
-                    'niveau_etude' =>
-                        $request->niveau_etude,
-
-                    'fonction' =>
-                        $request->fonction,
-
-                ]);
-            }
-
-            $apprenant = $apprenantExistant;
-
-        } else {
-
-            /*
-             * =================================================
-             * CRÉATION DU COMPTE UTILISATEUR
-             * =================================================
-             */
-
-            $nouveauUser = User::create([
-
-                'nom' =>
-                    $request->nom,
-
-                'prenom' =>
-                    $request->prenom,
-
-                'email' =>
-                    $request->email,
-
-                'telephone' =>
-                    $request->telephone,
-
-                /*
-                 * Mot de passe temporaire.
-                 *
-                 * L'utilisateur pourra ensuite le modifier
-                 * depuis son espace.
-                 */
-                'password' =>
-                    Hash::make('password123'),
-
-                'role' =>
-                    'apprenant',
-
-                'is_active' =>
-                    true,
-
-            ]);
-
-
-            /*
-             * =================================================
-             * CRÉATION DU DOSSIER APPRENANT
-             * =================================================
-             */
-
-            $apprenant = Apprenant::create([
-
-                'created_by' =>
-                    $nouveauUser->id,
-
-                'user_id' =>
-                    $nouveauUser->id,
-
-                'matricule' =>
-                    $this->genererMatricule(),
-
-                'date_naissance' =>
-                    $request->date_naissance,
-
-                'sexe' =>
-                    $request->sexe,
-
-                'situation_matrimoniale' =>
-                    $request->situation_matrimoniale,
-
-                'niveau_informatique' =>
-                    $request->niveau_informatique,
-
-                'adresse' =>
-                    $request->adresse,
-
-                'telephone' =>
-                    $request->telephone,
-
-                'email' =>
-                    $request->email,
-
-                'niveau_etude' =>
-                    $request->niveau_etude,
-
-                'fonction' =>
-                    $request->fonction,
-
-            ]);
-        }
-
-
-        /*
-         * =====================================================
-         * VÉRIFIER SI L'APPRENANT EST DÉJÀ INSCRIT À CETTE
-         * FORMATION
-         * =====================================================
-         *
-         * Important :
-         *
-         * Un apprenant peut faire plusieurs formations.
-         *
-         * Exemple :
-         *
-         * Formation 1 → déjà inscrite
-         * Formation 2 → elle peut s'inscrire
-         * Formation 3 → elle peut s'inscrire
-         *
-         * Ce qui est interdit est seulement le doublon
-         * sur LA MÊME formation.
-         */
-
-        $existe = Inscription::where(
-            'apprenant_id',
-            $apprenant->id
-        )
-        ->where(
-            'formation_id',
-            $formation->id
-        )
-        ->exists();
-
-
-        if ($existe) {
-
-            return response()->json([
-                'message' =>
-                    'Vous êtes déjà inscrit à cette formation.'
             ], 409);
         }
 
@@ -370,16 +190,122 @@ class InscriptionController extends Controller
                 ->count();
 
 
-            if (
-                $nombreInscrits >=
-                $formation->capacite
-            ) {
+            if ($nombreInscrits >= $formation->capacite) {
 
                 return response()->json([
                     'message' =>
                         'La capacité maximale de cette formation est atteinte.'
                 ], 409);
             }
+        }
+
+
+        /*
+         * =====================================================
+         * CRÉATION DU COMPTE UTILISATEUR
+         * =====================================================
+         *
+         * IMPORTANT :
+         *
+         * Le mot de passe n'est PLUS fixe.
+         *
+         * Le mot de passe choisi dans le formulaire est utilisé.
+         */
+        $nouveauUser = User::create([
+
+            'nom' =>
+                $request->nom,
+
+            'prenom' =>
+                $request->prenom,
+
+            'email' =>
+                $request->email,
+
+            'telephone' =>
+                $request->telephone,
+
+            /*
+             * MOT DE PASSE PERSONNEL
+             */
+            'password' =>
+                Hash::make($request->password),
+
+            'role' =>
+                'apprenant',
+
+            'is_active' =>
+                true,
+        ]);
+
+
+        /*
+         * =====================================================
+         * CRÉATION DU DOSSIER APPRENANT
+         * =====================================================
+         */
+        $apprenant = Apprenant::create([
+
+            'created_by' =>
+                $nouveauUser->id,
+
+            'user_id' =>
+                $nouveauUser->id,
+
+            'matricule' =>
+                $this->genererMatricule(),
+
+            'date_naissance' =>
+                $request->date_naissance,
+
+            'sexe' =>
+                $request->sexe,
+
+            'situation_matrimoniale' =>
+                $request->situation_matrimoniale,
+
+            'niveau_informatique' =>
+                $request->niveau_informatique,
+
+            'adresse' =>
+                $request->adresse,
+
+            'telephone' =>
+                $request->telephone,
+
+            'email' =>
+                $request->email,
+
+            'niveau_etude' =>
+                $request->niveau_etude,
+
+            'fonction' =>
+                $request->fonction,
+        ]);
+
+
+        /*
+         * =====================================================
+         * VÉRIFIER LE DOUBLON
+         * =====================================================
+         */
+        $existe = Inscription::where(
+            'apprenant_id',
+            $apprenant->id
+        )
+        ->where(
+            'formation_id',
+            $formation->id
+        )
+        ->exists();
+
+
+        if ($existe) {
+
+            return response()->json([
+                'message' =>
+                    'Vous êtes déjà inscrit à cette formation.'
+            ], 409);
         }
 
 
@@ -408,13 +334,8 @@ class InscriptionController extends Controller
             'etat_formation' =>
                 'Non commencée',
 
-            /*
-             * Inscription faite depuis le site public,
-             * donc aucun admin/gestionnaire créateur.
-             */
             'created_by' =>
                 null,
-
         ]);
 
 
@@ -447,7 +368,7 @@ class InscriptionController extends Controller
 
     /**
      * =========================================================
-     * GÉNÉRER UN MATRICULE
+     * GÉNÉRER MATRICULE
      * =========================================================
      */
     private function genererMatricule()
@@ -458,13 +379,6 @@ class InscriptionController extends Controller
 
         if ($dernier && $dernier->matricule) {
 
-            /*
-             * Exemple :
-             *
-             * CRE-DP0001
-             *
-             * On récupère 0001
-             */
             $numero =
                 intval(
                     substr(
@@ -491,7 +405,7 @@ class InscriptionController extends Controller
 
     /**
      * =========================================================
-     * INSCRIPTION PAR APPRENANT CONNECTÉ
+     * INSCRIPTION APPRENANT CONNECTÉ
      * =========================================================
      */
     public function store(Request $request)
@@ -542,9 +456,6 @@ class InscriptionController extends Controller
             );
 
 
-        /*
-         * Vérifier si la formation est active.
-         */
         if (!$formation->is_active) {
 
             return response()->json([
@@ -554,11 +465,6 @@ class InscriptionController extends Controller
         }
 
 
-        /*
-         * Vérifier le doublon.
-         *
-         * L'apprenant peut faire plusieurs formations.
-         */
         $existe =
             Inscription::where(
                 'apprenant_id',
@@ -580,9 +486,6 @@ class InscriptionController extends Controller
         }
 
 
-        /*
-         * Vérifier la capacité.
-         */
         if ($formation->capacite !== null) {
 
             $nombreInscrits =
@@ -597,10 +500,7 @@ class InscriptionController extends Controller
                 ->count();
 
 
-            if (
-                $nombreInscrits >=
-                $formation->capacite
-            ) {
+            if ($nombreInscrits >= $formation->capacite) {
 
                 return response()->json([
                     'message' =>
@@ -643,9 +543,7 @@ class InscriptionController extends Controller
                 'Demande envoyée avec succès.',
 
             'data' =>
-                $inscription->load(
-                    'formation'
-                )
+                $inscription->load('formation')
 
         ], 201);
     }
@@ -653,13 +551,11 @@ class InscriptionController extends Controller
 
     /**
      * =========================================================
-     * INSCRIPTION DIRECTE PAR ADMIN / GESTIONNAIRE
+     * INSCRIPTION ADMIN
      * =========================================================
      */
-    public function inscriptionAdmin(
-        Request $request
-    ) {
-
+    public function inscriptionAdmin(Request $request)
+    {
         $user =
             Auth::guard('api')->user();
 
@@ -708,9 +604,6 @@ class InscriptionController extends Controller
         }
 
 
-        /*
-         * Vérifier le doublon.
-         */
         $existe =
             Inscription::where(
                 'apprenant_id',
@@ -732,9 +625,6 @@ class InscriptionController extends Controller
         }
 
 
-        /*
-         * Vérifier la capacité.
-         */
         if ($formation->capacite !== null) {
 
             $nombreInscrits =
@@ -749,10 +639,7 @@ class InscriptionController extends Controller
                 ->count();
 
 
-            if (
-                $nombreInscrits >=
-                $formation->capacite
-            ) {
+            if ($nombreInscrits >= $formation->capacite) {
 
                 return response()->json([
                     'message' =>
@@ -807,7 +694,7 @@ class InscriptionController extends Controller
 
     /**
      * =========================================================
-     * DETAIL INSCRIPTION
+     * DETAIL
      * =========================================================
      */
     public function show(string $id)
@@ -836,9 +723,7 @@ class InscriptionController extends Controller
 
         if (
             $user->role === 'apprenant' &&
-            $inscription
-                ->apprenant
-                ->user_id != $user->id
+            $inscription->apprenant->user_id != $user->id
         ) {
 
             return response()->json([
@@ -856,7 +741,7 @@ class InscriptionController extends Controller
 
     /**
      * =========================================================
-     * VALIDATION / MODIFICATION
+     * UPDATE
      * =========================================================
      */
     public function update(
@@ -915,10 +800,6 @@ class InscriptionController extends Controller
         }
 
 
-        /*
-         * On garde la trace de l'admin /
-         * gestionnaire qui effectue la modification.
-         */
         $data['created_by'] =
             $user->id;
 
