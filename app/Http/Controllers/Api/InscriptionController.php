@@ -692,6 +692,404 @@ class InscriptionController extends Controller
     }
 
 
+
+/**
+ * =========================================================
+ * CREER UN COMPTE + APPRENANT + INSCRIPTION
+ * ADMIN / GESTIONNAIRE
+ * =========================================================
+ */
+public function inscriptionCompleteAdmin(Request $request)
+{
+    $user = Auth::guard('api')->user();
+
+    /*
+    |--------------------------------------------------------------------------
+    | VERIFICATION ADMIN / GESTIONNAIRE
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !$user ||
+        !in_array($user->role, ['admin', 'gestionnaire'])
+    ) {
+        return response()->json([
+            'message' => 'Accès refusé.'
+        ], 403);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDATION
+    |--------------------------------------------------------------------------
+    */
+
+    $request->validate([
+
+        // Compte
+        'nom' => 'required|string|max:255',
+
+        'prenom' => 'required|string|max:255',
+
+        'email' => 'required|email|max:255|unique:users,email',
+
+        'password' => 'required|string|min:8|confirmed',
+
+        'telephone' => 'required|string|max:30',
+
+
+        // Apprenant
+        'date_naissance' => 'required|date',
+
+        'sexe' => 'required|in:Masculin,Feminin',
+
+        'situation_matrimoniale' =>
+            'required|in:Celibataire,Marie,Divorce,Veuf',
+
+        'niveau_etude' =>
+            'required|string|max:255',
+
+        'niveau_informatique' =>
+            'required|in:Debutant,Intermediaire,Avance',
+
+        'adresse' =>
+            'required|string|max:255',
+
+        'fonction' =>
+            'nullable|string|max:255',
+
+        'photo' =>
+            'nullable|image|mimes:jpg,jpeg,png|max:2048',
+
+
+        // Inscription
+        'formation_id' =>
+            'required|exists:formations,id',
+
+        'horaire' =>
+            'required|string|max:100',
+
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | FORMATION
+    |--------------------------------------------------------------------------
+    */
+
+    $formation = Formation::findOrFail(
+        $request->formation_id
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | FORMATION ACTIVE
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$formation->is_active) {
+
+        return response()->json([
+            'message' =>
+                'Cette formation n’est plus disponible.'
+        ], 409);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | CAPACITE
+    |--------------------------------------------------------------------------
+    */
+
+    if ($formation->capacite !== null) {
+
+        $nombreInscrits =
+            Inscription::where(
+                'formation_id',
+                $formation->id
+            )
+            ->where(
+                'statut',
+                'Valide'
+            )
+            ->count();
+
+
+        if (
+            $nombreInscrits >=
+            $formation->capacite
+        ) {
+
+            return response()->json([
+                'message' =>
+                    'La capacité maximale de cette formation est atteinte.'
+            ], 409);
+        }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TRANSACTION
+    |--------------------------------------------------------------------------
+    */
+
+    DB::beginTransaction();
+
+    try {
+
+        /*
+        |--------------------------------------------------------------------------
+        | CREATION DU COMPTE
+        |--------------------------------------------------------------------------
+        */
+
+        $nouveauUser = User::create([
+
+            'nom' =>
+                $request->nom,
+
+            'prenom' =>
+                $request->prenom,
+
+            'email' =>
+                $request->email,
+
+            'telephone' =>
+                $request->telephone,
+
+            'password' =>
+                Hash::make(
+                    $request->password
+                ),
+
+            'role' =>
+                'apprenant',
+
+            'is_active' =>
+                true,
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | PHOTO
+        |--------------------------------------------------------------------------
+        */
+
+        $photoPath = null;
+
+        if ($request->hasFile('photo')) {
+
+            $photoPath =
+                $request
+                    ->file('photo')
+                    ->store(
+                        'apprenants',
+                        'public'
+                    );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | MATRICULE
+        |--------------------------------------------------------------------------
+        */
+
+        $dernier =
+            Apprenant::latest('id')->first();
+
+        if (
+            $dernier &&
+            $dernier->matricule
+        ) {
+
+            $numero =
+                intval(
+                    substr(
+                        $dernier->matricule,
+                        6
+                    )
+                ) + 1;
+
+        } else {
+
+            $numero = 1;
+        }
+
+
+        $matricule =
+            'CRE-DP' .
+            str_pad(
+                $numero,
+                4,
+                '0',
+                STR_PAD_LEFT
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CREATION DOSSIER APPRENANT
+        |--------------------------------------------------------------------------
+        */
+
+        $apprenant =
+            Apprenant::create([
+
+                'created_by' =>
+                    $user->id,
+
+                'user_id' =>
+                    $nouveauUser->id,
+
+                'matricule' =>
+                    $matricule,
+
+                'date_naissance' =>
+                    $request->date_naissance,
+
+                'sexe' =>
+                    $request->sexe,
+
+                'situation_matrimoniale' =>
+                    $request->situation_matrimoniale,
+
+                'niveau_informatique' =>
+                    $request->niveau_informatique,
+
+                'adresse' =>
+                    $request->adresse,
+
+                'telephone' =>
+                    $request->telephone,
+
+                'email' =>
+                    $request->email,
+
+                'niveau_etude' =>
+                    $request->niveau_etude,
+
+                'fonction' =>
+                    $request->fonction,
+
+                'photo' =>
+                    $photoPath,
+
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CREATION INSCRIPTION
+        |--------------------------------------------------------------------------
+        */
+
+        $inscription =
+            Inscription::create([
+
+                'apprenant_id' =>
+                    $apprenant->id,
+
+                'formation_id' =>
+                    $formation->id,
+
+                'horaire' =>
+                    $request->horaire,
+
+                'date_inscription' =>
+                    now(),
+
+                /*
+                 * ADMIN = inscription directement valide
+                 */
+                'statut' =>
+                    'Valide',
+
+                'etat_formation' =>
+                    'Non commencée',
+
+                /*
+                 * Admin / gestionnaire qui a effectué
+                 * l'inscription
+                 */
+                'created_by' =>
+                    $user->id,
+
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | VALIDATION TRANSACTION
+        |--------------------------------------------------------------------------
+        */
+
+        DB::commit();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | REPONSE
+        |--------------------------------------------------------------------------
+        */
+
+        return response()->json([
+
+            'success' =>
+                true,
+
+            'message' =>
+                'Compte apprenant créé et inscrit avec succès.',
+
+            'data' => [
+
+                'user' =>
+                    $nouveauUser,
+
+                'apprenant' =>
+                    $apprenant->load('user'),
+
+                'inscription' =>
+                    $inscription->load([
+                        'apprenant.user',
+                        'formation',
+                        'createur'
+                    ]),
+
+            ],
+
+        ], 201);
+
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+
+        return response()->json([
+
+            'success' =>
+                false,
+
+            'message' =>
+                'Une erreur est survenue lors de la création de l’apprenant.',
+
+            'error' =>
+                $e->getMessage(),
+
+        ], 500);
+    }
+}
+
+
+
     /**
      * =========================================================
      * DETAIL

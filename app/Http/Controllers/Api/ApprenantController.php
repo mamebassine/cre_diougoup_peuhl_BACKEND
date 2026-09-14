@@ -10,12 +10,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
-use Illuminate\Validation\Rule;
-
 class ApprenantController extends Controller
 {
     /**
+     * =========================================================
      * LISTE DES APPRENANTS
+     * =========================================================
      */
     public function index()
     {
@@ -32,14 +32,16 @@ class ApprenantController extends Controller
                 'user',
                 'inscriptions.formation'
             ])
-            ->latest()
-            ->get()
+                ->latest()
+                ->get()
         );
     }
 
 
     /**
+     * =========================================================
      * CREATION APPRENANT
+     * =========================================================
      */
     public function store(Request $request)
     {
@@ -50,6 +52,7 @@ class ApprenantController extends Controller
                 'message' => 'Non authentifié'
             ], 401);
         }
+
 
         /*
         |--------------------------------------------------------------------------
@@ -62,9 +65,11 @@ class ApprenantController extends Controller
 
             'sexe' => 'required|in:Masculin,Feminin',
 
-            'situation_matrimoniale' => 'required|in:Celibataire,Marie,Divorce,Veuf',
+            'situation_matrimoniale' =>
+                'required|in:Celibataire,Marie,Divorce,Veuf',
 
-            'niveau_informatique' => 'required|in:Debutant,Intermediaire,Avance',
+            'niveau_informatique' =>
+                'required|in:Debutant,Intermediaire,Avance',
 
             'adresse' => 'required|string',
 
@@ -75,8 +80,6 @@ class ApprenantController extends Controller
             'fonction' => 'nullable|string',
 
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-
-           
         ]);
 
 
@@ -138,6 +141,8 @@ class ApprenantController extends Controller
 
                 'created_by' => $user->id,
 
+                // CORRECTION :
+                // L'apprenant utilise son propre compte
                 'user_id' => $user->id,
 
                 'matricule' => $matricule,
@@ -156,7 +161,7 @@ class ApprenantController extends Controller
 
                 'telephone' => $request->telephone,
 
-                'email' => $user->email,
+                'email' => $request->email,
 
                 'niveau_etude' => $request->niveau_etude,
 
@@ -183,11 +188,12 @@ class ApprenantController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | Informations du compte utilisateur
+            | VALIDATION DU COMPTE UTILISATEUR
             |--------------------------------------------------------------------------
             */
 
             $request->validate([
+
                 'nom' =>
                     'required|string|max:255',
 
@@ -238,6 +244,8 @@ class ApprenantController extends Controller
 
                 'created_by' => $user->id,
 
+                // Le nouvel apprenant utilise
+                // le compte qui vient d'être créé
                 'user_id' => $nouveauUser->id,
 
                 'matricule' => $matricule,
@@ -280,7 +288,9 @@ class ApprenantController extends Controller
 
 
     /**
+     * =========================================================
      * MON PROFIL
+     * =========================================================
      */
     public function monProfil()
     {
@@ -299,14 +309,16 @@ class ApprenantController extends Controller
             'apprenant' => Apprenant::with([
                 'inscriptions.formation'
             ])
-            ->where('user_id', $user->id)
-            ->first()
+                ->where('user_id', $user->id)
+                ->first()
         ]);
     }
 
 
     /**
+     * =========================================================
      * DETAIL APPRENANT
+     * =========================================================
      */
     public function show(string $id)
     {
@@ -331,13 +343,12 @@ class ApprenantController extends Controller
             // NE PAS SUPPRIMER
             'boiteIdees'
 
-        ])
-        ->findOrFail($id);
+        ])->findOrFail($id);
 
 
         /*
         |--------------------------------------------------------------------------
-        | Un apprenant peut uniquement voir son propre dossier
+        | UN APPRENANT PEUT UNIQUEMENT VOIR SON PROPRE DOSSIER
         |--------------------------------------------------------------------------
         */
 
@@ -357,7 +368,9 @@ class ApprenantController extends Controller
 
 
     /**
+     * =========================================================
      * MODIFICATION APPRENANT
+     * =========================================================
      */
     public function update(Request $request, string $id)
     {
@@ -462,7 +475,9 @@ class ApprenantController extends Controller
 
 
     /**
+     * =========================================================
      * SUPPRESSION APPRENANT
+     * =========================================================
      */
     public function destroy(string $id)
     {
@@ -496,7 +511,7 @@ class ApprenantController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | SUPPRESSION DU DOSSIER
+        | SUPPRESSION DU DOSSIER APPRENANT
         |--------------------------------------------------------------------------
         */
 
@@ -508,4 +523,3 @@ class ApprenantController extends Controller
         ]);
     }
 }
-

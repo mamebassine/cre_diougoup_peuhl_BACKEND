@@ -180,14 +180,87 @@ Route::prefix('auth')->group(function () {
 
         // Inscription directe par admin / gestionnaire
 
-        Route::middleware('role:admin,gestionnaire')->group(function () {
+        /*
+|--------------------------------------------------------------------------
+| INSCRIPTIONS FORMATIONS
+|--------------------------------------------------------------------------
+*/
 
-            Route::post('/inscriptions/admin', [
-                InscriptionController::class,
-                'inscriptionAdmin'
-            ]);
+// =====================================================
+// ADMIN / GESTIONNAIRE
+// =====================================================
 
-        });
+Route::middleware('role:admin,gestionnaire')->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Création complète :
+    | User + Apprenant + Inscription
+    |--------------------------------------------------------------------------
+    */
+
+    Route::post('/inscriptions/complete', [
+        InscriptionController::class,
+        'inscriptionCompleteAdmin'
+    ]);
+
+});
+
+
+// =====================================================
+// APPRENANT CONNECTÉ
+// =====================================================
+//
+// Cette route est seulement pour un apprenant qui possède
+// déjà son compte ET son dossier apprenant.
+//
+
+Route::middleware('role:apprenant')->group(function () {
+
+    Route::post('/inscriptions', [
+        InscriptionController::class,
+        'store'
+    ]);
+
+});
+
+
+// =====================================================
+// VOIR LES INSCRIPTIONS
+// =====================================================
+
+Route::middleware('role:apprenant,admin,gestionnaire')->group(function () {
+
+    Route::get('/inscriptions', [
+        InscriptionController::class,
+        'index'
+    ]);
+
+    Route::get('/inscriptions/{id}', [
+        InscriptionController::class,
+        'show'
+    ]);
+
+});
+
+
+// =====================================================
+// VALIDATION / MODIFICATION
+// =====================================================
+
+Route::middleware('role:admin,gestionnaire')->group(function () {
+
+    Route::put('/inscriptions/{id}', [
+        InscriptionController::class,
+        'update'
+    ]);
+
+    Route::delete('/inscriptions/{id}', [
+        InscriptionController::class,
+        'destroy'
+    ]);
+
+});
 
 
         // L'apprenant demande une inscription
