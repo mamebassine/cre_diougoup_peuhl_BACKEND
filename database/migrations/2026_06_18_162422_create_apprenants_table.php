@@ -12,55 +12,61 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('apprenants', function (Blueprint $table) {
-    $table->id();
 
-    $table->foreignId('user_id')
-          ->unique()
-          ->constrained()
-          ->cascadeOnDelete();
+            $table->id();
 
-    $table->foreignId('created_by')
-      ->nullable()
-      ->constrained('users')
-      ->nullOnDelete();
+            $table->foreignId('user_id')
+                  ->unique()
+                  ->constrained()
+                  ->cascadeOnDelete();
 
-    $table->string('matricule')->unique();
+            $table->foreignId('created_by')
+                  ->nullable()
+                  ->constrained('users')
+                  ->nullOnDelete();
 
-    $table->date('date_naissance');
+            $table->string('matricule')->unique();
 
-    $table->enum('sexe', [
-        'Masculin',
-        'Feminin'
-    ]);
+            // Numéro de carte d'identité
+            $table->string('numero_cni', 13)
+                  ->nullable()
+                  ->unique();
 
-    $table->enum('situation_matrimoniale', [
-        'Celibataire',
-        'Marie',
-        'Divorce',
-        'Veuf'
-    ]);
+            $table->date('date_naissance');
 
-    $table->text('adresse');
+            $table->enum('sexe', [
+                'Masculin',
+                'Feminin'
+            ]);
 
-    $table->string('telephone');
-    $table->string('email')->nullable();
+            $table->enum('situation_matrimoniale', [
+                'Celibataire',
+                'Marie',
+                'Divorce',
+                'Veuf'
+            ]);
 
-    $table->string('niveau_etude');
+            $table->text('adresse');
 
-    $table->string('fonction')->nullable();
+            $table->string('telephone');
+            $table->string('email')->nullable();
 
-    $table->enum('niveau_informatique', [
-        'Debutant',
-        'Intermediaire',
-        'Avance'
-    ]);
+            $table->string('niveau_etude');
 
-    $table->string('photo')->nullable();
+            $table->string('fonction')->nullable();
 
-    $table->longText('signature')->nullable();
+            $table->enum('niveau_informatique', [
+                'Debutant',
+                'Intermediaire',
+                'Avance'
+            ]);
 
-    $table->timestamps();
-});
+            $table->string('photo')->nullable();
+
+            $table->longText('signature')->nullable();
+
+            $table->timestamps();
+        });
     }
 
     /**

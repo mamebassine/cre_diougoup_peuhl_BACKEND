@@ -15,6 +15,8 @@ class Apprenant extends Model
 
         'matricule',
 
+        'numero_cni',
+
         'date_naissance',
 
         'sexe',
@@ -37,20 +39,14 @@ class Apprenant extends Model
 
         'signature',
 
-
     ];
-
 
 
     protected $casts = [
 
         'date_naissance' => 'date',
 
-
     ];
-
-
-
 
 
     /**
@@ -62,9 +58,6 @@ class Apprenant extends Model
             User::class
         );
     }
-
-
-
 
 
     /**
@@ -90,9 +83,6 @@ class Apprenant extends Model
     }
 
 
-
-
-
     /**
      * Les messages envoyés dans la boîte à idées.
      */
@@ -104,10 +94,14 @@ class Apprenant extends Model
     }
 
 
+    /**
+     * Les inscriptions de l'apprenant.
+     */
     public function inscriptions()
-{
-    return $this->hasMany(Inscription::class);
-}
-
+    {
+        return $this->hasMany(
+            Inscription::class
+        );
+    }
 
 }

@@ -79,17 +79,7 @@ class InscriptionController extends Controller
          * =====================================================
          * DATE LIMITE POUR AVOIR AU MOINS 11 ANS
          * =====================================================
-         *
-         * Exemple :
-         * Aujourd'hui = 18/08/2026
-         *
-         * Date minimale acceptée :
-         * 18/08/2015
-         *
-         * Une personne née le 18/08/2015 = 11 ans
-         * Une personne née le 19/08/2015 = 10 ans
          */
-
         $dateLimite = now()
             ->subYears(11)
             ->toDateString();
@@ -111,18 +101,12 @@ class InscriptionController extends Controller
             'email' =>
                 'required|email|max:255|unique:users,email',
 
-            /*
-             * Le mot de passe choisi par l'utilisateur
-             */
             'password' =>
                 'required|string|min:8|confirmed',
 
             'telephone' =>
                 'required|string|max:30',
 
-            /*
-             * AU MOINS 11 ANS
-             */
             'date_naissance' =>
                 'required|date|before_or_equal:' . $dateLimite,
 
@@ -140,6 +124,57 @@ class InscriptionController extends Controller
 
             'adresse' =>
                 'required|string|max:255',
+
+            /*
+             * =================================================
+             * CNI
+             * =================================================
+             *
+             * Règles :
+             * - exactement 13 chiffres
+             * - uniquement des chiffres
+             * - homme : commence par 1
+             * - femme : commence par 2
+             * - CNI unique
+             */
+            'numero_cni' => [
+                'required',
+                'digits:13',
+                'unique:apprenants,numero_cni',
+
+                function ($attribute, $value, $fail) use ($request) {
+
+                    $premierChiffre = substr($value, 0, 1);
+
+                    if (
+                        $request->sexe === 'Masculin' &&
+                        $premierChiffre !== '1'
+                    ) {
+                        $fail(
+                            'Pour un homme, le numéro CNI doit commencer par 1.'
+                        );
+                    }
+
+                    if (
+                        $request->sexe === 'Feminin' &&
+                        $premierChiffre !== '2'
+                    ) {
+                        $fail(
+                            'Pour une femme, le numéro CNI doit commencer par 2.'
+                        );
+                    }
+                },
+            ],
+
+            /*
+             * =================================================
+             * SIGNATURE
+             * =================================================
+             *
+             * La signature vient du canvas sous forme Base64.
+             */
+            'signature' =>
+                'required|string',
 
             'formation_id' =>
                 'required|exists:formations,id',
@@ -204,12 +239,6 @@ class InscriptionController extends Controller
          * =====================================================
          * CRÉATION DU COMPTE UTILISATEUR
          * =====================================================
-         *
-         * IMPORTANT :
-         *
-         * Le mot de passe n'est PLUS fixe.
-         *
-         * Le mot de passe choisi dans le formulaire est utilisé.
          */
         $nouveauUser = User::create([
 
@@ -225,9 +254,6 @@ class InscriptionController extends Controller
             'telephone' =>
                 $request->telephone,
 
-            /*
-             * MOT DE PASSE PERSONNEL
-             */
             'password' =>
                 Hash::make($request->password),
 
@@ -255,6 +281,12 @@ class InscriptionController extends Controller
             'matricule' =>
                 $this->genererMatricule(),
 
+            /*
+             * CNI
+             */
+            'numero_cni' =>
+                $request->numero_cni,
+
             'date_naissance' =>
                 $request->date_naissance,
 
@@ -281,6 +313,12 @@ class InscriptionController extends Controller
 
             'fonction' =>
                 $request->fonction,
+
+            /*
+             * SIGNATURE
+             */
+            'signature' =>
+                $request->signature,
         ]);
 
 
@@ -358,7 +396,7 @@ class InscriptionController extends Controller
                     $inscription->load('formation'),
 
                 'apprenant' =>
-                    $apprenant,
+                    $apprenant->load('user'),
 
             ],
 
@@ -692,402 +730,397 @@ class InscriptionController extends Controller
     }
 
 
-
-/**
- * =========================================================
- * CREER UN COMPTE + APPRENANT + INSCRIPTION
- * ADMIN / GESTIONNAIRE
- * =========================================================
- */
-public function inscriptionCompleteAdmin(Request $request)
-{
-    $user = Auth::guard('api')->user();
-
-    /*
-    |--------------------------------------------------------------------------
-    | VERIFICATION ADMIN / GESTIONNAIRE
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !$user ||
-        !in_array($user->role, ['admin', 'gestionnaire'])
-    ) {
-        return response()->json([
-            'message' => 'Accès refusé.'
-        ], 403);
-    }
+    /**
+     * =========================================================
+     * CREER UN COMPTE + APPRENANT + INSCRIPTION
+     * ADMIN / GESTIONNAIRE
+     * =========================================================
+     */
+    public function inscriptionCompleteAdmin(Request $request)
+    {
+        $user =
+            Auth::guard('api')->user();
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATION
-    |--------------------------------------------------------------------------
-    */
-
-    $request->validate([
-
-        // Compte
-        'nom' => 'required|string|max:255',
-
-        'prenom' => 'required|string|max:255',
-
-        'email' => 'required|email|max:255|unique:users,email',
-
-        'password' => 'required|string|min:8|confirmed',
-
-        'telephone' => 'required|string|max:30',
-
-
-        // Apprenant
-        'date_naissance' => 'required|date',
-
-        'sexe' => 'required|in:Masculin,Feminin',
-
-        'situation_matrimoniale' =>
-            'required|in:Celibataire,Marie,Divorce,Veuf',
-
-        'niveau_etude' =>
-            'required|string|max:255',
-
-        'niveau_informatique' =>
-            'required|in:Debutant,Intermediaire,Avance',
-
-        'adresse' =>
-            'required|string|max:255',
-
-        'fonction' =>
-            'nullable|string|max:255',
-
-        'photo' =>
-            'nullable|image|mimes:jpg,jpeg,png|max:2048',
-
-
-        // Inscription
-        'formation_id' =>
-            'required|exists:formations,id',
-
-        'horaire' =>
-            'required|string|max:100',
-
-    ]);
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | FORMATION
-    |--------------------------------------------------------------------------
-    */
-
-    $formation = Formation::findOrFail(
-        $request->formation_id
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | FORMATION ACTIVE
-    |--------------------------------------------------------------------------
-    */
-
-    if (!$formation->is_active) {
-
-        return response()->json([
-            'message' =>
-                'Cette formation n’est plus disponible.'
-        ], 409);
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | CAPACITE
-    |--------------------------------------------------------------------------
-    */
-
-    if ($formation->capacite !== null) {
-
-        $nombreInscrits =
-            Inscription::where(
-                'formation_id',
-                $formation->id
-            )
-            ->where(
-                'statut',
-                'Valide'
-            )
-            ->count();
-
-
+        /*
+         * VERIFICATION ADMIN / GESTIONNAIRE
+         */
         if (
-            $nombreInscrits >=
-            $formation->capacite
+            !$user ||
+            !in_array(
+                $user->role,
+                ['admin', 'gestionnaire']
+            )
         ) {
 
             return response()->json([
                 'message' =>
-                    'La capacité maximale de cette formation est atteinte.'
-            ], 409);
+                    'Accès refusé.'
+            ], 403);
         }
-    }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | TRANSACTION
-    |--------------------------------------------------------------------------
-    */
-
-    DB::beginTransaction();
-
-    try {
 
         /*
-        |--------------------------------------------------------------------------
-        | CREATION DU COMPTE
-        |--------------------------------------------------------------------------
-        */
+         * VALIDATION
+         */
+        $request->validate([
 
-        $nouveauUser = User::create([
-
+            // Compte
             'nom' =>
-                $request->nom,
+                'required|string|max:255',
 
             'prenom' =>
-                $request->prenom,
+                'required|string|max:255',
 
             'email' =>
-                $request->email,
-
-            'telephone' =>
-                $request->telephone,
+                'required|email|max:255|unique:users,email',
 
             'password' =>
-                Hash::make(
-                    $request->password
-                ),
+                'required|string|min:8|confirmed',
 
-            'role' =>
-                'apprenant',
+            'telephone' =>
+                'required|string|max:30',
 
-            'is_active' =>
-                true,
+            // Apprenant
+            /*
+             * =================================================
+             * CNI
+             * =================================================
+             *
+             * Règles :
+             * - exactement 13 chiffres
+             * - uniquement des chiffres
+             * - homme : commence par 1
+             * - femme : commence par 2
+             * - CNI unique
+             */
+            'numero_cni' => [
+                'required',
+                'digits:13',
+                'unique:apprenants,numero_cni',
+
+                function ($attribute, $value, $fail) use ($request) {
+
+                    $premierChiffre = substr($value, 0, 1);
+
+                    if (
+                        $request->sexe === 'Masculin' &&
+                        $premierChiffre !== '1'
+                    ) {
+                        $fail(
+                            'Pour un homme, le numéro CNI doit commencer par 1.'
+                        );
+                    }
+
+                    if (
+                        $request->sexe === 'Feminin' &&
+                        $premierChiffre !== '2'
+                    ) {
+                        $fail(
+                            'Pour une femme, le numéro CNI doit commencer par 2.'
+                        );
+                    }
+                },
+            ],
+
+            'date_naissance' =>
+                'required|date',
+
+            'sexe' =>
+                'required|in:Masculin,Feminin',
+
+            'situation_matrimoniale' =>
+                'required|in:Celibataire,Marie,Divorce,Veuf',
+
+            'niveau_etude' =>
+                'required|string|max:255',
+
+            'niveau_informatique' =>
+                'required|in:Debutant,Intermediaire,Avance',
+
+            'adresse' =>
+                'required|string|max:255',
+
+            'fonction' =>
+                'nullable|string|max:255',
+
+            'photo' =>
+                'nullable|image|mimes:jpg,jpeg,png|max:2048',
+
+            // Inscription
+            'formation_id' =>
+                'required|exists:formations,id',
+
+            'horaire' =>
+                'required|string|max:100',
 
         ]);
 
 
         /*
-        |--------------------------------------------------------------------------
-        | PHOTO
-        |--------------------------------------------------------------------------
-        */
+         * =====================================================
+         * FORMATION
+         * =====================================================
+         */
+        $formation = Formation::findOrFail(
+            $request->formation_id
+        );
 
-        $photoPath = null;
 
-        if ($request->hasFile('photo')) {
+        if (!$formation->is_active) {
 
-            $photoPath =
-                $request
-                    ->file('photo')
-                    ->store(
-                        'apprenants',
-                        'public'
-                    );
+            return response()->json([
+                'message' =>
+                    'Cette formation n’est plus disponible.'
+            ], 409);
         }
 
 
         /*
-        |--------------------------------------------------------------------------
-        | MATRICULE
-        |--------------------------------------------------------------------------
-        */
+         * CAPACITÉ
+         */
+        if ($formation->capacite !== null) {
 
-        $dernier =
-            Apprenant::latest('id')->first();
+            $nombreInscrits =
+                Inscription::where(
+                    'formation_id',
+                    $formation->id
+                )
+                ->where(
+                    'statut',
+                    'Valide'
+                )
+                ->count();
 
-        if (
-            $dernier &&
-            $dernier->matricule
-        ) {
 
-            $numero =
-                intval(
-                    substr(
-                        $dernier->matricule,
-                        6
-                    )
-                ) + 1;
+            if (
+                $nombreInscrits >=
+                $formation->capacite
+            ) {
 
-        } else {
-
-            $numero = 1;
+                return response()->json([
+                    'message' =>
+                        'La capacité maximale de cette formation est atteinte.'
+                ], 409);
+            }
         }
 
 
-        $matricule =
-            'CRE-DP' .
-            str_pad(
-                $numero,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
-
-
         /*
-        |--------------------------------------------------------------------------
-        | CREATION DOSSIER APPRENANT
-        |--------------------------------------------------------------------------
-        */
+         * =====================================================
+         * TRANSACTION
+         * =====================================================
+         */
+        DB::beginTransaction();
 
-        $apprenant =
-            Apprenant::create([
+        try {
 
-                'created_by' =>
-                    $user->id,
+            /*
+             * CREATION DU COMPTE
+             */
+            $nouveauUser = User::create([
 
-                'user_id' =>
-                    $nouveauUser->id,
+                'nom' =>
+                    $request->nom,
 
-                'matricule' =>
-                    $matricule,
-
-                'date_naissance' =>
-                    $request->date_naissance,
-
-                'sexe' =>
-                    $request->sexe,
-
-                'situation_matrimoniale' =>
-                    $request->situation_matrimoniale,
-
-                'niveau_informatique' =>
-                    $request->niveau_informatique,
-
-                'adresse' =>
-                    $request->adresse,
-
-                'telephone' =>
-                    $request->telephone,
+                'prenom' =>
+                    $request->prenom,
 
                 'email' =>
                     $request->email,
 
-                'niveau_etude' =>
-                    $request->niveau_etude,
+                'telephone' =>
+                    $request->telephone,
 
-                'fonction' =>
-                    $request->fonction,
+                'password' =>
+                    Hash::make(
+                        $request->password
+                    ),
 
-                'photo' =>
-                    $photoPath,
+                'role' =>
+                    'apprenant',
 
-            ]);
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | CREATION INSCRIPTION
-        |--------------------------------------------------------------------------
-        */
-
-        $inscription =
-            Inscription::create([
-
-                'apprenant_id' =>
-                    $apprenant->id,
-
-                'formation_id' =>
-                    $formation->id,
-
-                'horaire' =>
-                    $request->horaire,
-
-                'date_inscription' =>
-                    now(),
-
-                /*
-                 * ADMIN = inscription directement valide
-                 */
-                'statut' =>
-                    'Valide',
-
-                'etat_formation' =>
-                    'Non commencée',
-
-                /*
-                 * Admin / gestionnaire qui a effectué
-                 * l'inscription
-                 */
-                'created_by' =>
-                    $user->id,
+                'is_active' =>
+                    true,
 
             ]);
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | VALIDATION TRANSACTION
-        |--------------------------------------------------------------------------
-        */
+            /*
+             * PHOTO
+             */
+            $photoPath = null;
 
-        DB::commit();
+            if ($request->hasFile('photo')) {
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | REPONSE
-        |--------------------------------------------------------------------------
-        */
-
-        return response()->json([
-
-            'success' =>
-                true,
-
-            'message' =>
-                'Compte apprenant créé et inscrit avec succès.',
-
-            'data' => [
-
-                'user' =>
-                    $nouveauUser,
-
-                'apprenant' =>
-                    $apprenant->load('user'),
-
-                'inscription' =>
-                    $inscription->load([
-                        'apprenant.user',
-                        'formation',
-                        'createur'
-                    ]),
-
-            ],
-
-        ], 201);
+                $photoPath =
+                    $request
+                        ->file('photo')
+                        ->store(
+                            'apprenants',
+                            'public'
+                        );
+            }
 
 
-    } catch (\Throwable $e) {
+            /*
+             * MATRICULE
+             */
+            $matricule =
+                $this->genererMatricule();
 
-        DB::rollBack();
+
+            /*
+             * =================================================
+             * CREATION DOSSIER APPRENANT
+             * =================================================
+             *
+             * IMPORTANT :
+             * L'ADMIN ENREGISTRE LA CNI.
+             * L'ADMIN NE DEMANDE PAS DE SIGNATURE.
+             */
+            $apprenant =
+                Apprenant::create([
+
+                    'created_by' =>
+                        $user->id,
+
+                    'user_id' =>
+                        $nouveauUser->id,
+
+                    'matricule' =>
+                        $matricule,
+
+                    'numero_cni' =>
+                        $request->numero_cni,
+
+                    'date_naissance' =>
+                        $request->date_naissance,
+
+                    'sexe' =>
+                        $request->sexe,
+
+                    'situation_matrimoniale' =>
+                        $request->situation_matrimoniale,
+
+                    'niveau_informatique' =>
+                        $request->niveau_informatique,
+
+                    'adresse' =>
+                        $request->adresse,
+
+                    'telephone' =>
+                        $request->telephone,
+
+                    'email' =>
+                        $request->email,
+
+                    'niveau_etude' =>
+                        $request->niveau_etude,
+
+                    'fonction' =>
+                        $request->fonction,
+
+                    'photo' =>
+                        $photoPath,
+
+                ]);
 
 
-        return response()->json([
+            /*
+             * =================================================
+             * CREATION INSCRIPTION
+             * =================================================
+             */
+            $inscription =
+                Inscription::create([
 
-            'success' =>
-                false,
+                    'apprenant_id' =>
+                        $apprenant->id,
 
-            'message' =>
-                'Une erreur est survenue lors de la création de l’apprenant.',
+                    'formation_id' =>
+                        $formation->id,
 
-            'error' =>
-                $e->getMessage(),
+                    'horaire' =>
+                        $request->horaire,
 
-        ], 500);
+                    'date_inscription' =>
+                        now(),
+
+                    /*
+                     * ADMIN = INSCRIPTION DIRECTEMENT VALIDE
+                     */
+                    'statut' =>
+                        'Valide',
+
+                    'etat_formation' =>
+                        'Non commencée',
+
+                    'created_by' =>
+                        $user->id,
+
+                ]);
+
+
+            /*
+             * =================================================
+             * VALIDATION TRANSACTION
+             * =================================================
+             */
+            DB::commit();
+
+
+            /*
+             * =================================================
+             * REPONSE
+             * =================================================
+             */
+            return response()->json([
+
+                'success' =>
+                    true,
+
+                'message' =>
+                    'Compte apprenant créé et inscrit avec succès.',
+
+                'data' => [
+
+                    'user' =>
+                        $nouveauUser,
+
+                    'apprenant' =>
+                        $apprenant->load('user'),
+
+                    'inscription' =>
+                        $inscription->load([
+                            'apprenant.user',
+                            'formation',
+                            'createur'
+                        ]),
+
+                ],
+
+            ], 201);
+
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+
+                'success' =>
+                    false,
+
+                'message' =>
+                    'Une erreur est survenue lors de la création de l’apprenant.',
+
+                'error' =>
+                    $e->getMessage(),
+
+            ], 500);
+        }
     }
-}
-
 
 
     /**
@@ -1146,10 +1179,8 @@ public function inscriptionCompleteAdmin(Request $request)
         Request $request,
         string $id
     ) {
-
         $user =
             Auth::guard('api')->user();
-
 
         if (
             !$user ||

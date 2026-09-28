@@ -23,7 +23,10 @@ class ApprenantController extends Controller
     {
         $user = Auth::guard('api')->user();
 
-        if (!$user || !in_array($user->role, ['admin', 'gestionnaire'])) {
+        if (
+            !$user ||
+            !in_array($user->role, ['admin', 'gestionnaire'])
+        ) {
             return response()->json([
                 'message' => 'Accès refusé'
             ], 403);
@@ -63,25 +66,74 @@ class ApprenantController extends Controller
         */
 
         $request->validate([
-            'date_naissance' => 'required|date',
 
-            'sexe' => 'required|in:Masculin,Feminin',
+            'numero_cni' => [
+                'nullable',
+                'string',
+                'max:50',
+                'unique:apprenants,numero_cni'
+            ],
 
-            'situation_matrimoniale' =>
-                'required|in:Celibataire,Marie,Divorce,Veuf',
+            'date_naissance' => [
+                'required',
+                'date'
+            ],
 
-            'niveau_informatique' =>
-                'required|in:Debutant,Intermediaire,Avance',
+            'sexe' => [
+                'required',
+                'in:Masculin,Feminin'
+            ],
 
-            'adresse' => 'required|string',
+            'situation_matrimoniale' => [
+                'required',
+                'in:Celibataire,Marie,Divorce,Veuf'
+            ],
 
-            'telephone' => 'required|string',
+            'niveau_informatique' => [
+                'required',
+                'in:Debutant,Intermediaire,Avance'
+            ],
 
-            'niveau_etude' => 'required|string',
+            'adresse' => [
+                'required',
+                'string'
+            ],
 
-            'fonction' => 'nullable|string',
+            'telephone' => [
+                'required',
+                'string'
+            ],
 
-            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'niveau_etude' => [
+                'required',
+                'string'
+            ],
+
+            'fonction' => [
+                'nullable',
+                'string'
+            ],
+
+            'photo' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:2048'
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | SIGNATURE
+            |--------------------------------------------------------------------------
+            | La signature sera envoyée depuis le canvas
+            | sous forme Base64.
+            |--------------------------------------------------------------------------
+            */
+
+            'signature' => [
+                'nullable',
+                'string'
+            ],
         ]);
 
 
@@ -94,8 +146,13 @@ class ApprenantController extends Controller
         $photoPath = null;
 
         if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')
-                ->store('apprenants', 'public');
+
+            $photoPath = $request
+                ->file('photo')
+                ->store(
+                    'apprenants',
+                    'public'
+                );
         }
 
 
@@ -108,12 +165,20 @@ class ApprenantController extends Controller
         $dernier = Apprenant::latest('id')->first();
 
         if ($dernier) {
+
             $numero = intval(
-                substr($dernier->matricule, 6)
+                substr(
+                    $dernier->matricule,
+                    6
+                )
             ) + 1;
+
         } else {
+
             $numero = 1;
+
         }
+
 
         $matricule = 'CRE-DP' . str_pad(
             $numero,
@@ -131,27 +196,39 @@ class ApprenantController extends Controller
 
         if ($user->role === 'apprenant') {
 
-            // Un utilisateur ne peut avoir qu'un seul dossier
-            if (Apprenant::where('user_id', $user->id)->exists()) {
+            if (
+                Apprenant::where(
+                    'user_id',
+                    $user->id
+                )->exists()
+            ) {
+
                 return response()->json([
-                    'message' => 'Vous avez déjà un dossier apprenant.'
+                    'message' =>
+                        'Vous avez déjà un dossier apprenant.'
                 ], 409);
             }
 
 
             $apprenant = Apprenant::create([
 
-                'created_by' => $user->id,
+                'created_by' =>
+                    $user->id,
 
-                // CORRECTION :
-                // L'apprenant utilise son propre compte
-                'user_id' => $user->id,
+                'user_id' =>
+                    $user->id,
 
-                'matricule' => $matricule,
+                'matricule' =>
+                    $matricule,
 
-                'date_naissance' => $request->date_naissance,
+                'numero_cni' =>
+                    $request->numero_cni,
 
-                'sexe' => $request->sexe,
+                'date_naissance' =>
+                    $request->date_naissance,
+
+                'sexe' =>
+                    $request->sexe,
 
                 'situation_matrimoniale' =>
                     $request->situation_matrimoniale,
@@ -159,23 +236,37 @@ class ApprenantController extends Controller
                 'niveau_informatique' =>
                     $request->niveau_informatique,
 
-                'adresse' => $request->adresse,
+                'adresse' =>
+                    $request->adresse,
 
-                'telephone' => $request->telephone,
+                'telephone' =>
+                    $request->telephone,
 
-                'email' => $request->email,
+                'email' =>
+                    $request->email,
 
-                'niveau_etude' => $request->niveau_etude,
+                'niveau_etude' =>
+                    $request->niveau_etude,
 
-                'fonction' => $request->fonction,
+                'fonction' =>
+                    $request->fonction,
 
-                'photo' => $photoPath,
+                'photo' =>
+                    $photoPath,
+
+                'signature' =>
+                    $request->signature,
             ]);
 
 
             return response()->json([
-                'message' => 'Dossier apprenant créé avec succès.',
-                'data' => $apprenant->load('user')
+
+                'message' =>
+                    'Dossier apprenant créé avec succès.',
+
+                'data' =>
+                    $apprenant->load('user')
+
             ], 201);
         }
 
@@ -186,7 +277,12 @@ class ApprenantController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (in_array($user->role, ['admin', 'gestionnaire'])) {
+        if (
+            in_array(
+                $user->role,
+                ['admin', 'gestionnaire']
+            )
+        ) {
 
             /*
             |--------------------------------------------------------------------------
@@ -196,17 +292,29 @@ class ApprenantController extends Controller
 
             $request->validate([
 
-                'nom' =>
-                    'required|string|max:255',
+                'nom' => [
+                    'required',
+                    'string',
+                    'max:255'
+                ],
 
-                'prenom' =>
-                    'required|string|max:255',
+                'prenom' => [
+                    'required',
+                    'string',
+                    'max:255'
+                ],
 
-                'email' =>
-                    'required|email|unique:users,email',
+                'email' => [
+                    'required',
+                    'email',
+                    'unique:users,email'
+                ],
 
-                'password' =>
-                    'nullable|min:6'
+                'password' => [
+                    'nullable',
+                    'min:6'
+                ]
+
             ]);
 
 
@@ -218,21 +326,29 @@ class ApprenantController extends Controller
 
             $nouveauUser = User::create([
 
-                'nom' => $request->nom,
+                'nom' =>
+                    $request->nom,
 
-                'prenom' => $request->prenom,
+                'prenom' =>
+                    $request->prenom,
 
-                'email' => $request->email,
+                'email' =>
+                    $request->email,
 
-                'telephone' => $request->telephone,
+                'telephone' =>
+                    $request->telephone,
 
-                'password' => Hash::make(
-                    $request->password ?? 'password123'
-                ),
+                'password' =>
+                    Hash::make(
+                        $request->password
+                        ?? 'password123'
+                    ),
 
-                'role' => 'apprenant',
+                'role' =>
+                    'apprenant',
 
-                'is_active' => true,
+                'is_active' =>
+                    true,
             ]);
 
 
@@ -244,17 +360,23 @@ class ApprenantController extends Controller
 
             $apprenant = Apprenant::create([
 
-                'created_by' => $user->id,
+                'created_by' =>
+                    $user->id,
 
-                // Le nouvel apprenant utilise
-                // le compte qui vient d'être créé
-                'user_id' => $nouveauUser->id,
+                'user_id' =>
+                    $nouveauUser->id,
 
-                'matricule' => $matricule,
+                'matricule' =>
+                    $matricule,
 
-                'date_naissance' => $request->date_naissance,
+                'numero_cni' =>
+                    $request->numero_cni,
 
-                'sexe' => $request->sexe,
+                'date_naissance' =>
+                    $request->date_naissance,
+
+                'sexe' =>
+                    $request->sexe,
 
                 'situation_matrimoniale' =>
                     $request->situation_matrimoniale,
@@ -262,23 +384,37 @@ class ApprenantController extends Controller
                 'niveau_informatique' =>
                     $request->niveau_informatique,
 
-                'adresse' => $request->adresse,
+                'adresse' =>
+                    $request->adresse,
 
-                'telephone' => $request->telephone,
+                'telephone' =>
+                    $request->telephone,
 
-                'email' => $request->email,
+                'email' =>
+                    $request->email,
 
-                'niveau_etude' => $request->niveau_etude,
+                'niveau_etude' =>
+                    $request->niveau_etude,
 
-                'fonction' => $request->fonction,
+                'fonction' =>
+                    $request->fonction,
 
-                'photo' => $photoPath,
+                'photo' =>
+                    $photoPath,
+
+                'signature' =>
+                    $request->signature,
             ]);
 
 
             return response()->json([
-                'message' => 'Apprenant créé avec succès.',
-                'data' => $apprenant->load('user')
+
+                'message' =>
+                    'Apprenant créé avec succès.',
+
+                'data' =>
+                    $apprenant->load('user')
+
             ], 201);
         }
 
@@ -299,20 +435,29 @@ class ApprenantController extends Controller
         $user = Auth::guard('api')->user();
 
         if (!$user) {
+
             return response()->json([
-                'message' => 'Utilisateur non connecté.'
+                'message' =>
+                    'Utilisateur non connecté.'
             ], 401);
         }
 
+
         return response()->json([
 
-            'user' => $user,
+            'user' =>
+                $user,
 
-            'apprenant' => Apprenant::with([
-                'inscriptions.formation'
-            ])
-                ->where('user_id', $user->id)
-                ->first()
+            'apprenant' =>
+                Apprenant::with([
+                    'inscriptions.formation'
+                ])
+                    ->where(
+                        'user_id',
+                        $user->id
+                    )
+                    ->first()
+
         ]);
     }
 
@@ -327,8 +472,10 @@ class ApprenantController extends Controller
         $user = Auth::guard('api')->user();
 
         if (!$user) {
+
             return response()->json([
-                'message' => 'Utilisateur non connecté.'
+                'message' =>
+                    'Utilisateur non connecté.'
             ], 401);
         }
 
@@ -339,10 +486,8 @@ class ApprenantController extends Controller
 
             'inscriptions.formation',
 
-            // NE PAS SUPPRIMER
             'diplomes',
 
-            // NE PAS SUPPRIMER
             'boiteIdees'
 
         ])->findOrFail($id);
@@ -359,324 +504,407 @@ class ApprenantController extends Controller
             &&
             $apprenant->user_id != $user->id
         ) {
+
             return response()->json([
-                'message' => 'Accès refusé'
+                'message' =>
+                    'Accès refusé'
             ], 403);
         }
 
 
-        return response()->json($apprenant);
+        return response()->json(
+            $apprenant
+        );
     }
 
 
-   /**
- * =========================================================
- * MODIFICATION APPRENANT
- * =========================================================
- */
-public function update(Request $request, string $id)
-{
-    $user = Auth::guard('api')->user();
-
-    /*
-    |--------------------------------------------------------------------------
-    | VÉRIFICATION ADMIN / GESTIONNAIRE
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !$user ||
-        !in_array($user->role, ['admin', 'gestionnaire'])
+    /**
+     * =========================================================
+     * MODIFICATION APPRENANT
+     * =========================================================
+     */
+    public function update(
+        Request $request,
+        string $id
     ) {
-        return response()->json([
-            'message' => 'Accès refusé'
-        ], 403);
-    }
 
+        $user = Auth::guard('api')->user();
 
-    /*
-    |--------------------------------------------------------------------------
-    | RÉCUPÉRER L'APPRENANT AVEC SON USER
-    |--------------------------------------------------------------------------
-    */
-
-    $apprenant = Apprenant::with('user')
-        ->findOrFail($id);
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATION
-    |--------------------------------------------------------------------------
-    */
-
-    $validated = $request->validate([
-
-        // ==============================
-        // INFORMATIONS APPRENANT
-        // ==============================
-
-        'date_naissance' => [
-            'required',
-            'date'
-        ],
-
-        'sexe' => [
-            'required',
-            Rule::in([
-                'Masculin',
-                'Feminin'
-            ])
-        ],
-
-        'situation_matrimoniale' => [
-            'required',
-            Rule::in([
-                'Celibataire',
-                'Marie',
-                'Divorce',
-                'Veuf'
-            ])
-        ],
-
-        'niveau_informatique' => [
-            'required',
-            Rule::in([
-                'Debutant',
-                'Intermediaire',
-                'Avance'
-            ])
-        ],
-
-        'adresse' => [
-            'required',
-            'string'
-        ],
-
-        'telephone' => [
-            'required',
-            'string'
-        ],
-
-        'niveau_etude' => [
-            'required',
-            'string'
-        ],
-
-        'fonction' => [
-            'nullable',
-            'string'
-        ],
-
-        'statut' => [
-            'nullable',
-            Rule::in([
-                'En attente',
-                'Valide',
-                'Refuse'
-            ])
-        ],
-
-        'photo' => [
-            'nullable',
-            'image',
-            'mimes:jpg,jpeg,png,webp',
-            'max:2048'
-        ],
-
-
-        // ==============================
-        // INFORMATIONS USER
-        // ==============================
-
-        'nom' => [
-            'required',
-            'string',
-            'max:255'
-        ],
-
-        'prenom' => [
-            'required',
-            'string',
-            'max:255'
-        ],
-
-        'email' => [
-            'required',
-            'email',
-            'max:255',
-            Rule::unique('users', 'email')
-                ->ignore($apprenant->user_id)
-        ],
-
-    ]);
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | TRANSACTION
-    |--------------------------------------------------------------------------
-    */
-
-    DB::beginTransaction();
-
-    try {
 
         /*
         |--------------------------------------------------------------------------
-        | MODIFICATION DU COMPTE USER
+        | VÉRIFICATION ADMIN / GESTIONNAIRE
         |--------------------------------------------------------------------------
         */
 
-        if ($apprenant->user) {
+        if (
+            !$user ||
+            !in_array(
+                $user->role,
+                ['admin', 'gestionnaire']
+            )
+        ) {
 
-            $apprenant->user->update([
-
-                'nom' => $validated['nom'],
-
-                'prenom' => $validated['prenom'],
-
-                'email' => $validated['email'],
-
-            ]);
+            return response()->json([
+                'message' =>
+                    'Accès refusé'
+            ], 403);
         }
 
 
         /*
         |--------------------------------------------------------------------------
-        | DONNÉES DE L'APPRENANT
+        | RÉCUPÉRER L'APPRENANT AVEC SON USER
         |--------------------------------------------------------------------------
         */
 
-        $donneesApprenant = [
-
-            'date_naissance' =>
-                $validated['date_naissance'],
-
-            'sexe' =>
-                $validated['sexe'],
-
-            'situation_matrimoniale' =>
-                $validated['situation_matrimoniale'],
-
-            'niveau_informatique' =>
-                $validated['niveau_informatique'],
-
-            'adresse' =>
-                $validated['adresse'],
-
-            'telephone' =>
-                $validated['telephone'],
-
-            'niveau_etude' =>
-                $validated['niveau_etude'],
-
-            'fonction' =>
-                $validated['fonction'] ?? null,
-
-            'statut' =>
-                $validated['statut']
-                ?? $apprenant->statut,
-
-        ];
+        $apprenant = Apprenant::with('user')
+            ->findOrFail($id);
 
 
         /*
         |--------------------------------------------------------------------------
-        | GESTION DE LA PHOTO
+        | VALIDATION
         |--------------------------------------------------------------------------
         */
 
-        if ($request->hasFile('photo')) {
+        $validated = $request->validate([
 
             /*
-            | Supprimer l'ancienne photo
+            |--------------------------------------------------------------------------
+            | INFORMATIONS APPRENANT
+            |--------------------------------------------------------------------------
             */
 
-            if ($apprenant->photo) {
+            'numero_cni' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique(
+                    'apprenants',
+                    'numero_cni'
+                )->ignore(
+                    $apprenant->id
+                )
+            ],
 
-                Storage::disk('public')
-                    ->delete($apprenant->photo);
+            'date_naissance' => [
+                'required',
+                'date'
+            ],
+
+            'sexe' => [
+                'required',
+                Rule::in([
+                    'Masculin',
+                    'Feminin'
+                ])
+            ],
+
+            'situation_matrimoniale' => [
+                'required',
+                Rule::in([
+                    'Celibataire',
+                    'Marie',
+                    'Divorce',
+                    'Veuf'
+                ])
+            ],
+
+            'niveau_informatique' => [
+                'required',
+                Rule::in([
+                    'Debutant',
+                    'Intermediaire',
+                    'Avance'
+                ])
+            ],
+
+            'adresse' => [
+                'required',
+                'string'
+            ],
+
+            'telephone' => [
+                'required',
+                'string'
+            ],
+
+            'niveau_etude' => [
+                'required',
+                'string'
+            ],
+
+            'fonction' => [
+                'nullable',
+                'string'
+            ],
+
+            'statut' => [
+                'nullable',
+                Rule::in([
+                    'En attente',
+                    'Valide',
+                    'Refuse'
+                ])
+            ],
+
+            'photo' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:2048'
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | SIGNATURE
+            |--------------------------------------------------------------------------
+            |
+            | La signature provenant du canvas est une chaîne
+            | Base64.
+            |
+            */
+
+            'signature' => [
+                'nullable',
+                'string'
+            ],
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | INFORMATIONS USER
+            |--------------------------------------------------------------------------
+            */
+
+            'nom' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'prenom' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique(
+                    'users',
+                    'email'
+                )->ignore(
+                    $apprenant->user_id
+                )
+            ],
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | TRANSACTION
+        |--------------------------------------------------------------------------
+        */
+
+        DB::beginTransaction();
+
+        try {
+
+            /*
+            |--------------------------------------------------------------------------
+            | MODIFICATION DU COMPTE USER
+            |--------------------------------------------------------------------------
+            */
+
+            if ($apprenant->user) {
+
+                $apprenant->user->update([
+
+                    'nom' =>
+                        $validated['nom'],
+
+                    'prenom' =>
+                        $validated['prenom'],
+
+                    'email' =>
+                        $validated['email'],
+
+                ]);
             }
 
 
             /*
-            | Enregistrer la nouvelle photo
+            |--------------------------------------------------------------------------
+            | DONNÉES DE L'APPRENANT
+            |--------------------------------------------------------------------------
             */
 
-            $donneesApprenant['photo'] =
-                $request->file('photo')
-                    ->store(
-                        'apprenants',
-                        'public'
-                    );
+            $donneesApprenant = [
+
+                'numero_cni' =>
+                    $validated['numero_cni']
+                    ?? null,
+
+                'date_naissance' =>
+                    $validated['date_naissance'],
+
+                'sexe' =>
+                    $validated['sexe'],
+
+                'situation_matrimoniale' =>
+                    $validated['situation_matrimoniale'],
+
+                'niveau_informatique' =>
+                    $validated['niveau_informatique'],
+
+                'adresse' =>
+                    $validated['adresse'],
+
+                'telephone' =>
+                    $validated['telephone'],
+
+                'niveau_etude' =>
+                    $validated['niveau_etude'],
+
+                'fonction' =>
+                    $validated['fonction']
+                    ?? null,
+
+                'statut' =>
+                    $validated['statut']
+                    ?? $apprenant->statut,
+
+            ];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | GESTION DE LA SIGNATURE
+            |--------------------------------------------------------------------------
+            |
+            | has('signature') est utilisé au lieu de filled().
+            |
+            | Cela permet :
+            |
+            | - nouvelle signature → remplacement
+            | - signature vide → suppression
+            | - signature non envoyée → conservation
+            |
+            */
+
+            if ($request->has('signature')) {
+
+                $donneesApprenant['signature'] =
+                    $request->input('signature');
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | GESTION DE LA PHOTO
+            |--------------------------------------------------------------------------
+            */
+
+            if ($request->hasFile('photo')) {
+
+                /*
+                | Supprimer l'ancienne photo
+                */
+
+                if ($apprenant->photo) {
+
+                    Storage::disk('public')
+                        ->delete(
+                            $apprenant->photo
+                        );
+                }
+
+
+                /*
+                | Enregistrer la nouvelle photo
+                */
+
+                $donneesApprenant['photo'] =
+                    $request
+                        ->file('photo')
+                        ->store(
+                            'apprenants',
+                            'public'
+                        );
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | MODIFIER L'APPRENANT
+            |--------------------------------------------------------------------------
+            */
+
+            $apprenant->update(
+                $donneesApprenant
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | VALIDER LA TRANSACTION
+            |--------------------------------------------------------------------------
+            */
+
+            DB::commit();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | RÉPONSE
+            |--------------------------------------------------------------------------
+            */
+
+            return response()->json([
+
+                'message' =>
+                    'Apprenant modifié avec succès.',
+
+                'data' =>
+                    $apprenant
+                        ->fresh()
+                        ->load([
+                            'user',
+                            'inscriptions.formation',
+                            'diplomes',
+                            'boiteIdees'
+                        ])
+
+            ], 200);
+
+
+        } catch (\Throwable $e) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | ANNULER EN CAS D'ERREUR
+            |--------------------------------------------------------------------------
+            */
+
+            DB::rollBack();
+
+
+            return response()->json([
+
+                'message' =>
+                    'Erreur lors de la modification de l’apprenant.',
+
+                'error' =>
+                    $e->getMessage()
+
+            ], 500);
         }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | MODIFIER L'APPRENANT
-        |--------------------------------------------------------------------------
-        */
-
-        $apprenant->update(
-            $donneesApprenant
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | VALIDER LA TRANSACTION
-        |--------------------------------------------------------------------------
-        */
-
-        DB::commit();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | RÉPONSE
-        |--------------------------------------------------------------------------
-        */
-
-        return response()->json([
-
-            'message' =>
-                'Apprenant modifié avec succès.',
-
-            'data' =>
-                $apprenant
-                    ->fresh()
-                    ->load([
-                        'user',
-                        'inscriptions.formation'
-                    ])
-
-        ], 200);
-
-
-    } catch (\Throwable $e) {
-
-        /*
-        |--------------------------------------------------------------------------
-        | ANNULER EN CAS D'ERREUR
-        |--------------------------------------------------------------------------
-        */
-
-        DB::rollBack();
-
-
-        return response()->json([
-
-            'message' =>
-                'Erreur lors de la modification de l’apprenant.',
-
-            'error' =>
-                $e->getMessage()
-
-        ], 500);
     }
-}
 
 
     /**
@@ -690,10 +918,15 @@ public function update(Request $request, string $id)
 
         if (
             !$user ||
-            !in_array($user->role, ['admin', 'gestionnaire'])
+            !in_array(
+                $user->role,
+                ['admin', 'gestionnaire']
+            )
         ) {
+
             return response()->json([
-                'message' => 'Accès refusé'
+                'message' =>
+                    'Accès refusé'
             ], 403);
         }
 
@@ -710,7 +943,9 @@ public function update(Request $request, string $id)
         if ($apprenant->photo) {
 
             Storage::disk('public')
-                ->delete($apprenant->photo);
+                ->delete(
+                    $apprenant->photo
+                );
         }
 
 
@@ -724,7 +959,8 @@ public function update(Request $request, string $id)
 
 
         return response()->json([
-            'message' => 'Apprenant supprimé avec succès.'
+            'message' =>
+                'Apprenant supprimé avec succès.'
         ]);
     }
 }
