@@ -266,7 +266,56 @@ class AuthController extends Controller
     }
 
 
+/**
+ * MODIFIER SON PROFIL
+ *
+ * L'apprenant peut modifier uniquement :
+ * nom, prenom, email, telephone et photo.
+ *
+ * Le rôle et les données sensibles ne sont jamais modifiables ici.
+ */
 
+public function updateProfile(Request $request)
+{
+    $user = Auth::guard('api')->user();
+
+    if (!$user) {
+        return response()->json([
+            'message' => 'Utilisateur non connecté.'
+        ], 401);
+    }
+
+    $request->validate([
+        'nom' => ['sometimes', 'required', 'string', 'max:255'],
+        'prenom' => ['sometimes', 'required', 'string', 'max:255'],
+        'email' => [
+            'sometimes',
+            'required',
+            'email',
+            'unique:users,email,' . $user->id
+        ],
+        'telephone' => ['nullable', 'string', 'max:20'],
+        'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+    ]);
+
+    $user->nom = $request->nom ?? $user->nom;
+    $user->prenom = $request->prenom ?? $user->prenom;
+    $user->email = $request->email ?? $user->email;
+    $user->telephone = $request->telephone;
+
+    if ($request->hasFile('photo')) {
+        $photoPath = $request->file('photo')->store('users', 'public');
+        $user->photo = $photoPath;
+    }
+
+    $user->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Votre profil a été modifié avec succès.',
+        'user' => $user
+    ]);
+}
 
 
 

@@ -1175,81 +1175,263 @@ class InscriptionController extends Controller
      * UPDATE
      * =========================================================
      */
-    public function update(
-        Request $request,
-        string $id
-    ) {
-        $user =
-            Auth::guard('api')->user();
 
-        if (
-            !$user ||
-            !in_array(
-                $user->role,
-                ['admin', 'gestionnaire']
-            )
-        ) {
+public function update(Request $request, string $id)
+{
+    $user = Auth::guard('api')->user();
 
-            return response()->json([
-                'message' =>
-                    'Accès refusé'
-            ], 403);
-        }
+    // =========================================================
+    // UTILISATEUR NON CONNECTÉ
+    // =========================================================
 
+    if (!$user) {
+        return response()->json([
+            'message' => 'Utilisateur non connecté.'
+        ], 401);
+    }
+
+    // =========================================================
+    // RÉCUPÉRER L'INSCRIPTION
+    // =========================================================
+
+    $inscription = Inscription::findOrFail($id);
+
+    // =========================================================
+    // ADMIN / GESTIONNAIRE
+    // =========================================================
+
+    if (in_array($user->role, ['admin', 'gestionnaire'])) {
 
         $request->validate([
+            'statut' => 'sometimes|in:En attente,Valide,Refuse',
 
-            'statut' =>
-                'sometimes|in:En attente,Valide,Refuse',
+            'etat_formation' => 'sometimes|in:Non commencée,En cours,Terminée,Abandonnée',
 
-            'etat_formation' =>
-                'sometimes|in:Non commencée,En cours,Terminée,Abandonnée',
+            'formation_id' => 'sometimes|exists:formations,id',
 
+            'horaire' => 'sometimes|string|max:100',
         ]);
-
-
-        $inscription =
-            Inscription::findOrFail($id);
-
 
         $data = [];
 
-
         if ($request->has('statut')) {
-
-            $data['statut'] =
-                $request->statut;
+            $data['statut'] = $request->statut;
         }
-
 
         if ($request->has('etat_formation')) {
-
-            $data['etat_formation'] =
-                $request->etat_formation;
+            $data['etat_formation'] = $request->etat_formation;
         }
 
+        if ($request->has('formation_id')) {
+            $formation = Formation::findOrFail($request->formation_id);
 
-        $data['created_by'] =
-            $user->id;
+            if (!$formation->is_active) {
+                return response()->json([
+                    'message' => 'Cette formation n’est plus disponible.'
+                ], 409);
+            }
 
+            $data['formation_id'] = $formation->id;
+        }
+
+        if ($request->has('horaire')) {
+            $data['horaire'] = $request->horaire;
+        }
+
+        $data['created_by'] = $user->id;
 
         $inscription->update($data);
 
-
         return response()->json([
-
-            'message' =>
-                'Inscription mise à jour.',
-
-            'data' =>
-                $inscription->load([
-                    'apprenant.user',
-                    'formation',
-                    'createur'
-                ])
-
+            'message' => 'Inscription mise à jour.',
+            'data' => $inscription->load([
+                'apprenant.user',
+                'formation',
+                'createur'
+            ])
         ]);
     }
+
+    // =========================================================
+    // APPRENANT
+    // =========================================================
+
+    if ($user->role === 'apprenant') {
+
+        // Récupérer le dossier de l'apprenant connecté
+        $apprenant = Apprenant::where(
+            'user_id',
+            $user->id
+        )->first();
+
+        if (!$apprenant) {
+            return response()->json([
+                'message' => 'Dossier apprenant introuvable.'
+            ], 404);
+        }
+
+        // =====================================================
+        // VÉRIFIER QUE L'INSCRIPTION LUI APPARTIENT
+        // =====================================================
+
+        if ($inscription->apprenant_id !== $apprenant->id) {
+            return response()->json([
+                'message' => 'Vous ne pouvez pas modifier l’inscription d’un autre apprenant.'
+            ], 403);
+        }
+
+        // =====================================================
+        // L'APPRENANT NE PEUT MODIFIER QUE :
+        // - formation_id
+        // - horaire
+        // =====================================================
+
+        $request->validate([
+            'formation_id' => 'required|exists:formations,id',
+            'horaire' => 'required|string|max:100',
+        ]);
+
+        // =====================================================
+        // VÉRIFIER LA FORMATION
+        // =====================================================
+
+        $formation = Formation::findOrFail(
+            $request->formation_id
+        );
+
+        if (!$formation->is_active) {
+            return response()->json([
+                'message' => 'Cette formation n’est plus disponible.'
+            ], 409);
+        }
+
+        // =====================================================
+        // VÉRIFIER SI LA FORMATION EST DÉJÀ UTILISÉE
+        // POUR CET APPRENANT
+        // =====================================================
+
+        $dejaInscrit = Inscription::where(
+            'apprenant_id',
+            $apprenant->id
+        )
+        ->where(
+            'formation_id',
+            $formation->id
+        )
+        ->where(
+            'id',
+            '!=',
+            $inscription->id
+        )
+        ->exists();
+
+        if ($dejaInscrit) {
+            return response()->json([
+                'message' => 'Vous êtes déjà inscrit à cette formation.'
+            ], 409);
+        }
+
+        // =====================================================
+        // MODIFICATION DE L'APPRENANT
+        // =====================================================
+
+        $inscription->update([
+            'formation_id' => $formation->id,
+            'horaire' => $request->horaire,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Votre inscription a été modifiée avec succès.',
+            'data' => $inscription->load('formation')
+        ]);
+    }
+
+    // =========================================================
+    // AUTRE RÔLE
+    // =========================================================
+
+    return response()->json([
+        'message' => 'Accès refusé.'
+    ], 403);
+}
+
+
+    // public function update(
+    //     Request $request,
+    //     string $id
+    // ) {
+    //     $user =
+    //         Auth::guard('api')->user();
+
+    //     if (
+    //         !$user ||
+    //         !in_array(
+    //             $user->role,
+    //             ['admin', 'gestionnaire']
+    //         )
+    //     ) {
+
+    //         return response()->json([
+    //             'message' =>
+    //                 'Accès refusé'
+    //         ], 403);
+    //     }
+
+
+    //     $request->validate([
+
+    //         'statut' =>
+    //             'sometimes|in:En attente,Valide,Refuse',
+
+    //         'etat_formation' =>
+    //             'sometimes|in:Non commencée,En cours,Terminée,Abandonnée',
+
+    //     ]);
+
+
+    //     $inscription =
+    //         Inscription::findOrFail($id);
+
+
+    //     $data = [];
+
+
+    //     if ($request->has('statut')) {
+
+    //         $data['statut'] =
+    //             $request->statut;
+    //     }
+
+
+    //     if ($request->has('etat_formation')) {
+
+    //         $data['etat_formation'] =
+    //             $request->etat_formation;
+    //     }
+
+
+    //     $data['created_by'] =
+    //         $user->id;
+
+
+    //     $inscription->update($data);
+
+
+    //     return response()->json([
+
+    //         'message' =>
+    //             'Inscription mise à jour.',
+
+    //         'data' =>
+    //             $inscription->load([
+    //                 'apprenant.user',
+    //                 'formation',
+    //                 'createur'
+    //             ])
+
+    //     ]);
+    // }
 
 
     /**
