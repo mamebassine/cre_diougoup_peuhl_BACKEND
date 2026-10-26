@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\BoiteIdeeController;
 use App\Http\Controllers\Api\FormationController;
 use App\Http\Controllers\Api\InscriptionController;
 
+use App\Http\Controllers\Api\NotificationController;
 
 Route::prefix('auth')->group(function () {
 
@@ -95,7 +96,35 @@ Route::put('/profile', [
             'logout'
         ]);
 
+/* 
+|--------------------------------------------------------------------------
+| NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
 
+Route::get('/notifications', [
+    NotificationController::class,
+    'index'
+]);
+
+Route::get('/notifications/unread', [
+    NotificationController::class,
+    'unread'
+]);
+
+Route::put('/notifications/{id}/read', [
+    NotificationController::class,
+    'markAsRead'
+]);
+
+Route::put('/notifications/read-all', [
+    NotificationController::class,
+    'markAllAsRead'
+]);
+
+Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
+      
         /*
         |--------------------------------------------------------------------------
         | APPRENANTS
@@ -332,6 +361,7 @@ Route::put('/profile', [
             ]);
 
         });
+        
 
 
         /*

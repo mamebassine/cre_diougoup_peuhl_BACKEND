@@ -111,4 +111,26 @@ class User extends Authenticatable implements JWTSubject
     }
 
 
+
+    /**
+ * Notifications de l'utilisateur
+ */
+public function notifications()
+{
+    return $this->morphMany(
+        \Illuminate\Notifications\DatabaseNotification::class,
+        'notifiable'
+    );
+}
+
+/**
+ * Notifications non lues
+ */
+public function unreadNotifications()
+{
+    return $this->notifications()
+        ->whereNull('read_at');
+}
+
+
 }
