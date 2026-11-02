@@ -96,7 +96,7 @@ Route::put('/profile', [
             'logout'
         ]);
 
-/* 
+/*
 |--------------------------------------------------------------------------
 | NOTIFICATIONS
 |--------------------------------------------------------------------------
@@ -124,7 +124,7 @@ Route::put('/notifications/read-all', [
 
 Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
-      
+
         /*
         |--------------------------------------------------------------------------
         | APPRENANTS
@@ -361,7 +361,7 @@ Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
             ]);
 
         });
-        
+
 
 
         /*
