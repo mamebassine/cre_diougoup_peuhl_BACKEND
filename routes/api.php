@@ -308,59 +308,82 @@ Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
         });
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | DIPLÔMES / ATTESTATIONS
-        |--------------------------------------------------------------------------
-        */
-
-        // Apprenant
-
-        Route::middleware('role:apprenant')->group(function () {
-
-            Route::post('/diplomes/demande', [
-                DiplomeAttestationController::class,
-                'demande'
-            ]);
-
-            Route::get('/diplomes/mes-demandes', [
-                DiplomeAttestationController::class,
-                'mesDemandes'
-            ]);
-
-        });
 
 
-        // Admin / Gestionnaire
 
-        Route::middleware('role:admin,gestionnaire')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| DIPLÔMES / ATTESTATIONS
+|--------------------------------------------------------------------------
+*/
 
-            Route::get('/diplomes', [
-                DiplomeAttestationController::class,
-                'index'
-            ]);
+// =====================================================
+// APPRENANT
+// =====================================================
 
-            Route::post('/diplomes', [
-                DiplomeAttestationController::class,
-                'store'
-            ]);
+Route::middleware('role:apprenant')->group(function () {
 
-            Route::get('/diplomes/{id}', [
-                DiplomeAttestationController::class,
-                'show'
-            ]);
+    // Envoyer une demande de diplôme ou d'attestation
+    Route::post('/diplomes/demande', [
+        DiplomeAttestationController::class,
+        'demande'
+    ]);
 
-            Route::put('/diplomes/{id}', [
-                DiplomeAttestationController::class,
-                'update'
-            ]);
+    // Consulter ses propres demandes
+    Route::get('/diplomes/mes-demandes', [
+        DiplomeAttestationController::class,
+        'mesDemandes'
+    ]);
 
-            Route::delete('/diplomes/{id}', [
-                DiplomeAttestationController::class,
-                'destroy'
-            ]);
+});
 
-        });
+
+// =====================================================
+// ADMIN / GESTIONNAIRE
+// =====================================================
+
+Route::middleware('role:admin,gestionnaire')->group(function () {
+
+    // Consulter toutes les demandes
+    Route::get('/diplomes', [
+        DiplomeAttestationController::class,
+        'index'
+    ]);
+
+    // Créer directement un document
+    Route::post('/diplomes', [
+        DiplomeAttestationController::class,
+        'store'
+    ]);
+
+    // Consulter les détails d'une demande
+    Route::get('/diplomes/{id}', [
+        DiplomeAttestationController::class,
+        'show'
+    ]);
+
+    // Valider ou refuser une demande
+    Route::put('/diplomes/{id}', [
+        DiplomeAttestationController::class,
+        'update'
+    ]);
+
+    // Enregistrer le retrait physique du document
+    Route::put('/diplomes/{id}/retrait', [
+        DiplomeAttestationController::class,
+        'marquerRetrait'
+    ]);
+
+    // Supprimer une demande
+    Route::delete('/diplomes/{id}', [
+        DiplomeAttestationController::class,
+        'destroy'
+    ]);
+
+});
+
+
+
 
 
 

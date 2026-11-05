@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -14,8 +15,9 @@ return new class extends Migration
         Schema::create('diplome_attestations', function (Blueprint $table) {
             $table->id();
 
+            // Relation avec l'apprenant
             $table->foreignId('apprenant_id')
-                  ->constrained()
+                  ->constrained('apprenants')
                   ->cascadeOnDelete();
 
             // Type de document demandé
@@ -24,18 +26,37 @@ return new class extends Migration
                 'Attestation'
             ]);
 
-            // Généré uniquement après validation par l'administration
-            $table->string('numero_document')->unique()->nullable();
+            // Informations personnelles de l'apprenant
+            $table->string('prenom');
+            $table->string('nom');
+            $table->date('date_naissance');
+            $table->string('lieu_naissance');
+            $table->string('telephone', 20);
+            $table->string('adresse');
+            $table->string('fonction')->nullable();
 
             // Informations sur la formation
             $table->string('formation')->nullable();
+            $table->string('duree_formation')->nullable();
+            $table->string('periode_formation')->nullable();
             $table->string('module_suivi')->nullable();
             $table->string('annee_academique')->nullable();
 
-            // Renseignée lors de la validation
+            // Informations sur la demande
+            $table->string('lieu_demande')->nullable();
+            $table->date('date_demande');
+
+            // Lettre de demande générée automatiquement en PDF
+            $table->string('fichier_demande')->nullable();
+
+            // Numéro du document officiel
+            $table->string('numero_document')->unique()->nullable();
+
+            // Date de validation et de délivrance
+            $table->date('date_validation')->nullable();
             $table->date('date_delivrance')->nullable();
 
-            // PDF généré ou téléversé par l'administration
+            // PDF officiel généré ou téléversé par l'administration
             $table->string('fichier_pdf')->nullable();
 
             // Suivi de la demande
@@ -45,6 +66,9 @@ return new class extends Migration
                 'refuse',
                 'retire'
             ])->default('en_attente');
+
+            // Motif du refus éventuel
+            $table->text('motif_refus')->nullable();
 
             // Date de retrait par l'apprenant
             $table->date('date_retrait')->nullable();
